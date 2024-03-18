@@ -23,7 +23,7 @@ All the development environments use Docker, follow the instructions inside the 
 
 ## Software Architecture
 
-
+![home-2](https://github.com/RoBorregos/home/assets/25570636/ea6f9551-27c7-4b4e-8fcb-8733a6eb7284)
 
 ## Team Members
 
