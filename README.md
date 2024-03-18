@@ -28,7 +28,7 @@ All the development environments use Docker, follow the instructions inside the 
 ## Team Members
 
 | Name                    | Github                                                       | Role      |
-| ----------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------ | --------- |
+| ----------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------ |
 | Adán Flores | [@afr2903](https://github.com/afr2903) | Integration, HRI & Manipulation |
 | Emiliano Flores | [@EmilianoHFlores](https://github.com/EmilianoHFlores) | Integration, Manipulation & Computer Vision |
 | Iván Romero | [@IvanRomero03](https://github.com/IvanRomero03) | Integration, HRI & Computer Vision |
