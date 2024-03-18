@@ -1,3 +1,12 @@
 [submodule "hri"]
 	path = hri
 	url = https://github.com/RoBorregos/home-hri
+[submodule "vision"]
+	path = vision
+	url = https://github.com/RoBorregos/home-vision.git
+[submodule "manipulation"]
+	path = manipulation
+	url = https://github.com/RoBorregos/home-manipulation.git
+[submodule "navigation"]
+	path = navigation
+	url = https://github.com/RoBorregos/home-navigation.git
