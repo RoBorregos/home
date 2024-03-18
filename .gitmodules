@@ -1,0 +1,3 @@
+[submodule "hri"]
+	path = hri
+	url = https://github.com/RoBorregos/home-hri
