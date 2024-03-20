@@ -35,8 +35,9 @@ All the development environments use Docker, follow the instructions inside the 
 | Alejandra Coeto | [@Ale-Coeto](https://github.com/Ale-Coeto) | Computer Vision & Manipulation |
 | Oscar Arreola | [@Oscar-gg](https://github.com/Oscar-gg) | HRI & Web |
 | Alexis Chapa | [@Chapa-1810](https://github.com/Chapa-1810) | Manipulation & Navigation |
+| Marina Villanueva | [@mariinaVillanueva)[https://github.com/mariinaVillanueva] | HRI |
 | David Vázquez | [@Deivideich](https://github.com/Deivideich) | Electronics, Navigation & Manipulation | 
-| Diego Hernández | [@Diego-HC](https://github.com/Diego-HC) | Navigation & Integration |
+| Diego Hernández | [@Diego-HC](https://github.com/Diego-HC) | Navigation |
 | Franciso Salas | [@Francisco-SP3](http://github.com/Francisco-SP3) | HRI |
 | Leonardo Sánchez | [@LeoLFSH](https://github.com/LeoLFSH) | Mechanics |
 | Alex Guerrero | [@]() | Mechanics |
