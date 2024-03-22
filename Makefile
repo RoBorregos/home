@@ -53,7 +53,7 @@ main.logs:
 # ----------------------------SHELL------------------------------------
 # Fires up a bash session inside the container
 main.shell:
-	@docker exec -it --user $(shell id -u):$(shell id -g) home-main
+	@docker exec -it --user $(shell id -u):$(shell id -g) home-main bash
 
 # ----------------------------REMOVE------------------------------------
 # Remove container
