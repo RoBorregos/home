@@ -17,7 +17,7 @@ if [[ "$@" == *"--net "* ]]; then
     DOCKER_NETWORK_ARGS=""
 fi
 
-VOLUME_COMMANDS=""
+VOLUME_COMMANDS="-v $PWD/ws:/workspace/ws"
 for i in "$@"
 do
 case $i in

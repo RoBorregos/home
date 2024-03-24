@@ -37,16 +37,17 @@ make main.build.cuda
 # For Jetson L4T: 35.4.1
 make main.build.jetson
 ```
-To create a container, run:
+To create a container, run the following commands. The `ws` folder is mounted by default, and additional folders can be added with the `volumes` argument, with both absolute and relative paths:
 
 ```bash
 # For CPU
-make main.create
+make main.create volumes="another_folder1/,~/another_folder2"
 # For GPU
-make main.create.cuda
+make main.create.cuda volumes="another_folder1/,~/another_folder2"
 # For Jetson L4T: 35.4.1
-make main.create.jetson
+make main.create.jetson volumes="another_folder1/,~/another_folder2"
 ```
+
 To enter the container, run:
 
 ```bash
