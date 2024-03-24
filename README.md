@@ -19,11 +19,49 @@ And to update the submodules content execute:
 git submodule update --init --recursive
 ```
 
-All the development environments use Docker, follow the instructions inside the `docker` folders.
+All the development environments use Docker, follow the instructions below or the README inside the `docker` folder for insights.
 
 ## Software Architecture
 
 ![home-2](https://github.com/RoBorregos/home/assets/25570636/ea6f9551-27c7-4b4e-8fcb-8733a6eb7284)
+
+## Docker Development
+
+The project uses Docker for easier development within ROS and CUDA/Jetson compatibility. Both this main engine repository and each area's contain a `docker` folder with dockerfiles and a Makefile for easier image and container creation. To build an image, run:
+
+```bash
+# For CPU
+make main.build
+# For GPU
+make main.build.cuda
+# For Jetson L4T: 35.4.1
+make main.build.jetson
+```
+To create a container, run:
+
+```bash
+# For CPU
+make main.create
+# For GPU
+make main.create.cuda
+# For Jetson L4T: 35.4.1
+make main.create.jetson
+```
+To enter the container, run:
+
+```bash
+make main.up
+make main.shell
+```
+
+You can stop and remove the container with:
+
+```bash
+make main.down
+make main.remove
+```
+
+Additional commands can be added with the Makefile and the scripts inside the `docker/scripts` folder can help for easier integration and sharing.
 
 ## Team Members
 
