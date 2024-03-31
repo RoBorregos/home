@@ -26,6 +26,7 @@ main.create:
 main.create.cuda:
 	@./docker/scripts/run.bash --area=main --use-cuda --volumes=$(volumes) --name=$(name)
 
+# For jetpack version 35.4.1, jetson images are special in the sense that they are specific to the jetpack version
 main.create.jetson:
 	@./docker/scripts/run.bash --area=main --jetson-l4t=35.4.1 --volumes=$(volumes) --name=$(name)
 
@@ -69,4 +70,4 @@ list-images:
 
 #: Show a list of containers.
 list-containers:
-	@docker container ls -a
+	@docker container ls -as

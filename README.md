@@ -26,7 +26,7 @@ All the development environments use Docker, follow the instructions below or th
 ![home-2](https://github.com/RoBorregos/home/assets/25570636/ea6f9551-27c7-4b4e-8fcb-8733a6eb7284)
 
 ## Docker Development
-The project uses Docker for easier development within ROS and CUDA/Jetson compatibility. Both this main engine repository and each area's contain a `docker` folder with dockerfiles and a Makefile for easier image and container creation. 
+The project uses Docker for easier development within ROS and CUDA/Jetson compatibility. Both this main engine repository and each area's contain a `docker` folder with dockerfiles and a Makefile for easier image and container creation and modification. 
 ### Requirements
 
 - [Docker Engine](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository)
@@ -70,8 +70,7 @@ make main.down
 make main.remove
 ```
 
-Additional commands can be added within the Makefile and the scripts inside the `docker/scripts` folder can help for easier integration and sharing.
-
+Additional commands can be added within the Makefile and the scripts inside the `docker/scripts` folder can help for easier integration and sharing. These include a build script to run the dockerfile and create a new image and a run script to create containers from it. Any additional dependency or system/environment configuration should be added to these scripts.
 ## Team Members
 
 | Name                    | Github                                                       | Role      |
