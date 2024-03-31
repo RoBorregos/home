@@ -64,26 +64,36 @@ case $i in
 esac
 done
 
-IMAGE_NAME="home-$AREA"
+IMAGE_NAME="roborregos/home:$AREA-cpu"
 
 if [ -z "$CONTAINER_NAME" ]; then
     CONTAINER_NAME="home-$AREA"
 fi
 
-echo "Container name: $CONTAINER_NAME"
-echo "Volumes to mount: $VOLUME_COMMANDS"
+# Additional commands required for each area (e.g. mounting volumes, setting environment variables, attaching devices, etc.)
+# Note that more or different commands may be needed if using GPU or a Jetson device
+ADDITIONAL_COMMANDS=""
 
 # CHECK IF argument USE_CUDA is passed
 DOCKER_GPU_ARGS=""
 if [ -n "$USE_CUDA" ]; then
+    IMAGE_NAME="roborregos/home:$AREA-cuda"
     DOCKER_GPU_ARGS="--gpus all"
+    ADDITIONAL_COMMANDS+=""
     echo "Using CUDA"
 fi
 
 if [ -n "$JETSON_L4T" ]; then
+    IMAGE_NAME="roborregos/home:$AREA-l4t-$JETSON_L4T"
     DOCKER_GPU_ARGS="--runtime nvidia"
+    ADDITIONAL_COMMANDS+=""
     echo "Building for Nvidia Jetson with L4T: $JETSON_L4T"
 fi
+
+
+echo "Building docker image: $IMAGE_NAME"
+echo "Container name: $CONTAINER_NAME"
+echo "Volumes to mount: $VOLUME_COMMANDS"
 
 DOCKER_COMMAND="docker run"
 
