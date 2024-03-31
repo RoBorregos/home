@@ -7,13 +7,8 @@ RUN apt-get update -qq && apt-get install -y  build-essential \
     terminator nano git wget curl iputils-ping \
     libcanberra-gtk-module libcanberra-gtk3-module \
     ros-dev-tools ros-noetic-teleop-twist-keyboard
-    
-# # Gazebo classic install
-# RUN apt install -y ros-noetic-gazebo-ros-pkgs \
-#     ros-noetic-gazebo-ros \
-#     ros-noetic-gazebo-plugins && \
-#     curl -sSL http://get.gazebosim.org | sh
 
+# New stage for each feature added
 ############################################
 # USER CONFIGURATION
 ############################################

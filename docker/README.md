@@ -9,7 +9,7 @@
 
 ## Build images
 
-Inside the `docker` folder in each module, there are different docker images. The convention for the naming of the **images** chosen is `home/feature:version`. Also, the `Dockerfile` should be named according to the feature and version.
+Inside the `docker` folder in each module, there are different docker images. The convention for the naming of the **images** chosen is `home:area-version`, where version contains the platform used: `cpu`, `cuda` or `l4t-version`. Also, the `Dockerfile` should be named according to the feature and version.
 
 Current images available:
 - Noetic base full

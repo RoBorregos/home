@@ -9,6 +9,7 @@ RUN apt-get update -qq && apt-get install -y  build-essential \
 
 RUN apt-get update && apt-get install -y ros-noetic-rqt ros-noetic-rqt-common-plugins
 
+# New stage for each feature added
 ############################################
 # Foxglove bridge
 ############################################

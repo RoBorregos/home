@@ -56,6 +56,7 @@ ENV ROS_ETC_DIR=/opt/ros/noetic/etc/ros
 ENV CMAKE_PREFIX_PATH=/opt/ros/noetic
 ENV DEBIAN_FRONTEND=
 
+# New stage for each feature added
 ###########################################
 # Develop image 
 ###########################################
