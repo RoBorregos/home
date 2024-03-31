@@ -7,7 +7,7 @@
 ###########################################
 FROM nvidia/cuda:11.8.0-runtime-ubuntu20.04 AS base
 
-LABEL maintainer="Emiliano Flores <A00833160@tec.mx>"
+LABEL maintainer="RoBorregos <roborregosteam@gmail.com>"
 
 ENV DEBIAN_FRONTEND=noninteractive
 

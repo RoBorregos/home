@@ -1,5 +1,5 @@
-FROM dustynv/ros:noetic-desktop-l4t-r35.4.1
-
+FROM dustynv/ros:noetic-desktop-l4t-r35.4.1 as base
+LABEL maintainer="RoBorregos <roborregosteam@gmail.com>"
 # Install dependencies.
 # Install dependencies.
 RUN apt-get update -qq && apt-get install -y  build-essential \
@@ -13,6 +13,11 @@ RUN apt-get update -qq && apt-get install -y  build-essential \
 #     ros-noetic-gazebo-ros \
 #     ros-noetic-gazebo-plugins && \
 #     curl -sSL http://get.gazebosim.org | sh
+
+############################################
+# USER CONFIGURATION
+############################################
+FROM base as user
 
 ARG USERNAME=ros
 ARG USER_UID=1000
