@@ -19,12 +19,58 @@ And to update the submodules content execute:
 git submodule update --init --recursive
 ```
 
-All the development environments use Docker, follow the instructions inside the `docker` folders.
+All the development environments use Docker, follow the instructions below or the [README](docker/README.md) inside the `docker` folder for insights.
 
 ## Software Architecture
 
 ![home-2](https://github.com/RoBorregos/home/assets/25570636/ea6f9551-27c7-4b4e-8fcb-8733a6eb7284)
 
+## Docker Development
+The project uses Docker for easier development within ROS and CUDA/Jetson compatibility. Both this main engine repository and each area's contain a `docker` folder with dockerfiles and a Makefile for easier image and container creation and modification. 
+### Requirements
+
+- [Docker Engine](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository)
+- [Post-installation steps for Linux](https://docs.docker.com/engine/install/linux-postinstall/)
+If using GPU:
+- NVIDIA Driver 
+- [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/index.html))
+### Container Creation
+To build an image, run:
+
+```bash
+# For CPU
+make main.build
+# For GPU
+make main.build.cuda
+# For Jetson L4T: 35.4.1
+make main.build.jetson
+```
+To create a container, run the following commands. The `ws` folder is mounted by default, and additional folders can be added with the `volumes` argument, with both absolute and relative paths allowed:
+
+```bash
+# For CPU
+make main.create volumes="another_folder1/,~/another_folder2"
+# For GPU
+make main.create.cuda volumes="another_folder1/,~/another_folder2"
+# For Jetson L4T: 35.4.1
+make main.create.jetson volumes="another_folder1/,~/another_folder2"
+```
+
+To enter the container, run:
+
+```bash
+make main.up
+make main.shell
+```
+
+You can stop and remove the container with:
+
+```bash
+make main.down
+make main.remove
+```
+
+Additional commands can be added within the Makefile and the scripts inside the `docker/scripts` folder can help for easier integration and sharing. These include a build script to run the dockerfile and create a new image and a run script to create containers from it. Any additional dependency or system/environment configuration should be added to these scripts.
 ## Team Members
 
 | Name                    | Github                                                       | Role      |
