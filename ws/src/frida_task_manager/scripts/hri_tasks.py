@@ -65,7 +65,7 @@ class TasksHRI:
 
 if __name__ == "__main__":
     try:
-        TaskManagerServer()
+        TasksHRI()
     except rospy.ROSInterruptException as e:
         rospy.logerr("Error: {}".format(e))
         pass
