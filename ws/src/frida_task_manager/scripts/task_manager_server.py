@@ -51,8 +51,8 @@ class TaskManagerServer:
         self._sub = rospy.Subscriber(COMMANDS_TOPIC, CommandList, self.commands_callback)
 
         if CONVERSATION_ENABLED:
-            #asd = self.say_pub = rospy.Publisher('/robot_text', String, queue_size=10)
             self.hri_task_manager = TasksHRI()
+            self.hri_task_manager.speak("Hi, my name is Frida. I'm here to help you with your domestic tasks")
         if MANIPULATION_ENABLED:
             self.manipulation_task_manager = TasksManipulation()
 
@@ -80,7 +80,7 @@ class TaskManagerServer:
             return
 
         if self.current_state != TaskManagerServer.STATE_ENUM["IDLE"]:
-            rospy.logwarn("Cancelling current commands and executing new received ")
+            rospy.logerror("Cancelling current commands and executing new received ")
             self.current_queue = []
             self.cancel_command()
             self.current_state = TaskManagerServer.STATE_ENUM["IDLE"]
@@ -124,10 +124,11 @@ class TaskManagerServer:
                     self.state = TaskManagerServer.STATE_ENUM["IDLE"]
                     self.past_state = self.status
                     break
-            else:
+            elif self.current_state != TaskManagerServer.STATE_ENUM["IDLE"]:
                 self.current_thread = None
                 self.current_queue = []
                 self.current_state = TaskManagerServer.STATE_ENUM["IDLE"]
+                self.hri_task_manager.speak("I have finished my tasks, I'm going to rest now")
             self._rate.sleep()
 
 
