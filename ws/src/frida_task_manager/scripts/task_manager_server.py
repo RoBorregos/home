@@ -16,7 +16,8 @@ from frida_language_processing.msg import Command, CommandList
 from frida_language_processing.msg import ConversateAction, ConversateFeedback, ConversateGoal, ConversateResult
 
 ### Python submodules
-from hri_tasks import TasksHRI 
+from hri_tasks import TasksHRI
+from manipulation_tasks import TasksManipulation
 
 COMMANDS_TOPIC = "/task_manager/commands"
 SPEAK_TOPIC = "/speech/speak"
@@ -52,6 +53,8 @@ class TaskManagerServer:
         if CONVERSATION_ENABLED:
             #asd = self.say_pub = rospy.Publisher('/robot_text', String, queue_size=10)
             self.hri_task_manager = TasksHRI()
+        if MANIPULATION_ENABLED:
+            self.manipulation_task_manager = TasksManipulation()
 
         self.current_state = TaskManagerServer.STATE_ENUM["IDLE"]
         self.current_command = None
