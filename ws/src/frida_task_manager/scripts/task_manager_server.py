@@ -12,12 +12,12 @@ import uuid
 
 ### ROS messages
 from std_msgs.msg import String
-from frida_language_processing.msg import Command, CommandList
-from frida_language_processing.msg import ConversateAction, ConversateFeedback, ConversateGoal, ConversateResult
+from frida_hri_interfaces.msg import Command, CommandList
+from frida_hri_interfaces.msg import ConversateAction, ConversateFeedback, ConversateGoal, ConversateResult
 
 ### Python submodules
 from hri_tasks import TasksHRI
-from manipulation_tasks import TasksManipulation
+#from manipulation_tasks import TasksManipulation
 
 COMMANDS_TOPIC = "/task_manager/commands"
 SPEAK_TOPIC = "/speech/speak"
@@ -53,8 +53,8 @@ class TaskManagerServer:
         if CONVERSATION_ENABLED:
             self.hri_task_manager = TasksHRI()
             self.hri_task_manager.speak("Hi, my name is Frida. I'm here to help you with your domestic tasks")
-        if MANIPULATION_ENABLED:
-            self.manipulation_task_manager = TasksManipulation()
+        #if MANIPULATION_ENABLED:
+            #self.manipulation_task_manager = TasksManipulation()
 
         self.current_state = TaskManagerServer.STATE_ENUM["IDLE"]
         self.current_command = None
