@@ -12,8 +12,8 @@ import uuid
 
 ### ROS messages
 from std_msgs.msg import String
-from frida_hri_msgs.msg import Command, CommandList
-from frida_hri_msgs.msg import ConversateAction, ConversateFeedback, ConversateGoal, ConversateResult
+from frida_hri_interfaces.msg import Command, CommandList
+from frida_hri_interfaces.msg import ConversateAction, ConversateFeedback, ConversateGoal, ConversateResult
 
 ### Python submodules
 from hri_tasks import TasksHRI

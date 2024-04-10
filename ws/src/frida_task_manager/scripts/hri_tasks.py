@@ -10,8 +10,8 @@ import actionlib
 
 ### ROS messages
 from std_msgs.msg import String
-from frida_hri_msgs.msg import Command, CommandList
-from frida_hri_msgs.msg import ConversateAction, ConversateFeedback, ConversateGoal, ConversateResult
+from frida_hri_interfaces.msg import Command, CommandList
+from frida_hri_interfaces.msg import ConversateAction, ConversateFeedback, ConversateGoal, ConversateResult
 
 COMMANDS_TOPIC = "/task_manager/commands"
 SPEAK_TOPIC = "/speech/speak"
