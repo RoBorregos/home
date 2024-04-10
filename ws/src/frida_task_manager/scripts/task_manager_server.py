@@ -17,15 +17,25 @@ from frida_hri_interfaces.msg import ConversateAction, ConversateFeedback, Conve
 
 ### Python submodules
 from hri_tasks import TasksHRI
-#from manipulation_tasks import TasksManipulation
+from manipulation_tasks import TasksManipulation
 
 COMMANDS_TOPIC = "/task_manager/commands"
 SPEAK_TOPIC = "/speech/speak"
 CONVERSATION_SERVER = "/conversation_as"
 
 NAV_ENABLED = False
-MANIPULATION_ENABLED = False
+MANIPULATION_ENABLED = True 
 CONVERSATION_ENABLED = True
+VISION_ENABLED = False
+
+AREAS = ["nav", "manipulation", "hri", "vision"]
+
+AREA_ENABLED = {
+    "nav": NAV_ENABLED,
+    "manipulation": MANIPULATION_ENABLED,
+    "hri": CONVERSATION_ENABLED,
+    "vision": VISION_ENABLED
+}
 
 class TaskManagerServer:
     """Class to manage different tasks divided by categories"""
@@ -50,11 +60,18 @@ class TaskManagerServer:
         self._rate = rospy.Rate(200)
         self._sub = rospy.Subscriber(COMMANDS_TOPIC, CommandList, self.commands_callback)
 
+        # Creates an empty dictionary to store the subtask manager of each area
+        self.subtask_manager = dict.fromkeys(AREAS, None)
+
         if CONVERSATION_ENABLED:
-            self.hri_task_manager = TasksHRI()
-            self.hri_task_manager.speak("Hi, my name is Frida. I'm here to help you with your domestic tasks")
-        #if MANIPULATION_ENABLED:
-            #self.manipulation_task_manager = TasksManipulation()
+            self.subtask_manager["hri"] = TasksHRI()
+            self.subtask_manager["hri"].speak("Hi, my name is Frida. I'm here to help you with your domestic tasks")
+        if MANIPULATION_ENABLED:
+            self.subtask_manager["manipulation"] = TasksManipulation()
+        #if NAV_ENABLED:
+            #self.subtask_manager["nav"] = TasksNavigation() 
+        #if VISION_ENABLED:
+            #self.subtask_manager["vision"] = TasksVision()
 
         self.current_state = TaskManagerServer.STATE_ENUM["IDLE"]
         self.current_command = None
@@ -99,15 +116,23 @@ class TaskManagerServer:
         """Method for executing a single command inside its area submodule"""
 
         rospy.loginfo(f"Executing command: {command.action} -> {command.complement}")
-        if command.action in TaskManagerServer.COMMANDS_CATEGORY["hri"]:
-            return self.hri_task_manager.execute_command(command.action, command.complement, self.perceived_information)
 
+        for area in AREAS:
+            if command.action in TaskManagerServer.COMMANDS_CATEGORY[area]:
+                task_feedback = self.subtask_manager[area].execute_command(command.action, command.complement, self.perceived_information)
+
+        if task_feedback == -1:
+            rospy.logerror("Error in task execution")
+            return TaskManagerServer.STATE_ENUM["ERROR"]
+
+        self.perceived_information += f"{command.action} {command.complement} {task_feedback} "
         return TaskManagerServer.STATE_ENUM["EXECUTING_COMMANDS"]
 
     def cancel_command(self) -> None:
         """Method to cancel the current command"""
-        if self.current_command in TaskManagerServer.COMMANDS_CATEGORY["hri"]:
-            self.hri_task_manager.cancel_command()
+        for area in AREAS:
+            if self.current_command in TaskManagerServer.COMMANDS_CATEGORY[area]:
+                self.subtask_manager[area].cancel_command()
 
     def run(self) -> None:
         """Main loop for the task manager"""
