@@ -12,6 +12,7 @@ import actionlib
 from std_msgs.msg import String
 from frida_hri_interfaces.msg import Command, CommandList
 from frida_hri_interfaces.msg import ConversateAction, ConversateFeedback, ConversateGoal, ConversateResult
+from frida_hri_interfaces.srv import Speak
 
 COMMANDS_TOPIC = "/task_manager/commands"
 SPEAK_TOPIC = "/speech/speak"
@@ -35,7 +36,10 @@ class TasksHRI:
 
     def __init__(self) -> None:
         self.conversation_client = actionlib.SimpleActionClient(CONVERSATION_SERVER, ConversateAction)
-        self.pub_speak = rospy.Publisher(SPEAK_TOPIC, String, queue_size=10)
+        #self.pub_speak = rospy.Publisher(SPEAK_TOPIC, String, queue_size=10)
+        rospy.wait_for_service(SPEAK_TOPIC)
+        self.speak_client = rospy.ServiceProxy(SPEAK_TOPIC, Speak)
+
         rospy.loginfo("HRI Task Manager initialized")
 
     def execute_command(self, command: str, complement: str, perceived_information: str) -> int:
@@ -51,7 +55,7 @@ class TasksHRI:
         if goal.wait:
             self.conversation_client.wait_for_result()
             result = self.conversation_client.get_result()
-            rospy.loginfo(f"Result: {result.success}")
+            #rospy.loginfo(f"Result: {result.success}")
             return result.success
         return 1
         
@@ -62,7 +66,8 @@ class TasksHRI:
 
     def speak(self, text: str) -> None:
         """Method to publish directly text to the speech node"""
-        self.pub_speak.publish(text)
+        #self.pub_speak.publish(text)
+        self.speak_client(text)
 
 if __name__ == "__main__":
     try:
