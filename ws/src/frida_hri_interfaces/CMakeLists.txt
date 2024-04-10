@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(frida_hri_msgs)
+project(frida_hri_interfaces)
 
 find_package(catkin REQUIRED COMPONENTS
   actionlib_msgs

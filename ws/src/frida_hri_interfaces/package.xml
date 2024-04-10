@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>frida_hri_msgs</name>
+  <name>frida_hri_interfaces</name>
   <version>0.0.0</version>
   <description>The frida_integration_msgs package</description>
 
