@@ -71,6 +71,18 @@ make main.remove
 ```
 
 Additional commands can be added within the Makefile and the scripts inside the `docker/scripts` folder can help for easier integration and sharing. These include a build script to run the dockerfile and create a new image and a run script to create containers from it. Any additional dependency or system/environment configuration should be added to these scripts.
+
+## Task manager
+
+The `frida_task_manager` is the central package in charge of processing the command information and directing the tasks with its respective area. For code readability, each area development its inside a Python module `area_tasks.py`, and they are called by `task_manager_server.py`, the script were the ROS node is created.
+
+For executing the `task_manager`, follow the above steps of [Docker setup](#Docker%20Development). Inside the `bash` terminal, setup the ROS network and execute the node:
+```bash
+export ROS_MASTER_URI=http://192.168.31.23:11311 # IP of the ROS Master (if master is in another machine)
+export ROS_IP=192.168.31.97 # IP of own machine
+rosrun frida_task_manager task_manager_server.py
+```
+
 ## Team Members
 
 | Name                    | Github                                                       | Role      |
@@ -84,6 +96,6 @@ Additional commands can be added within the Makefile and the scripts inside the 
 | Marina Villanueva | [@mariinaVillanueva](https://github.com/mariinaVillanueva) | HRI |
 | David Vázquez | [@Deivideich](https://github.com/Deivideich) | Electronics, Navigation & Manipulation | 
 | Diego Hernández | [@Diego-HC](https://github.com/Diego-HC) | Navigation |
-| Franciso Salas | [@Francisco-SP3](http://github.com/Francisco-SP3) | HRI |
+| Franciso Salas | [@Francisco-SP3](http://github.com/Francisco-SP3) | HRI, Navigation |
 | Leonardo Sánchez | [@LeoLFSH](https://github.com/LeoLFSH) | Mechanics |
-| Alex Guerrero | [@]() | Mechanics |
+| Alex Guerrero | [@alex-guerreroc](https://github.com/alex-guerreroc) | Mechanics |
