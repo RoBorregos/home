@@ -31,7 +31,10 @@ class TasksHRI:
     def __init__(self) -> None:
         self.conversation_client = actionlib.SimpleActionClient(CONVERSATION_SERVER, ConversateAction)
         #self.pub_speak = rospy.Publisher(SPEAK_TOPIC, String, queue_size=10)
-        rospy.wait_for_service(SPEAK_TOPIC)
+        try:
+            rospy.wait_for_service(SPEAK_TOPIC, timeout=5.0)
+        except rospy.ROSException:
+            rospy.logerr("Conversation service not available")
         self.speak_client = rospy.ServiceProxy(SPEAK_TOPIC, Speak)
 
         rospy.loginfo("HRI Task Manager initialized")
