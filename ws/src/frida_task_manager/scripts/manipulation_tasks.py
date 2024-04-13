@@ -13,11 +13,11 @@ from std_msgs.msg import String, Int32
 from frida_hri_interfaces.msg import Command, CommandList
 from frida_manipulation_interfaces.msg import manipulationPickAndPlaceAction, manipulationPickAndPlaceGoal, manipulationPickAndPlaceResult, manipulationPickAndPlaceFeedback
 
-PICK_AND_PLACE_SERVER = "/manipulationServer"
+MANIPULATION_SERVER = "/manipulationServer"
 PLACE_TARGET = -5
 
 class TasksManipulation:
-
+    """Manager for the manipulation area tasks"""
     STATE = {
         "TERMINAL_ERROR": -1,
         "EXECUTION_ERROR": 0,
@@ -27,28 +27,30 @@ class TasksManipulation:
     AREA_TASKS = ["pick", "place", "grab", "give", "open", "close"]
 
     OBJECTS_DICT = {
-        "zucaritas": 1,
-        "cookies": 11,
-        "cookie": 11,
+        "zucaritas": "cocacola",
+        "cookies": "galletas",
+        "cookie": "galletas",
         "snack": 5,
         "snacks": 5
     }
 
     def __init__(self) -> None:
-        self.pick_client = actionlib.SimpleActionClient(PICK_AND_PLACE_SERVER, manipulationPickAndPlaceAction)
-        self.pick_client.wait_for_server()
+        self.manipulation_client = actionlib.SimpleActionClient(MANIPULATION_SERVER, manipulationPickAndPlaceAction)
+        if not self.manipulation_client.wait_for_server(timeout=rospy.Duration(10.0)):
+            rospy.logerr("Manipulation server not initialized")
+
         rospy.loginfo("Manipulation Task Manager initialized")
 
     def execute_command(self, command: str, target: str, info: str) -> int:
         """Method to execute each command"""
         rospy.loginfo("Manipulation Command")
         if command == "pick":
-            return self.execute_pick( target )
-        if command == "place":
-            return self.execute_pick_and_place(PLACE_TARGET)
+            return self.execute_pick_and_place( target )
+        if command in ("place", "pour"):
+            return self.execute_pick_and_place( command )
 
         return -1
-    
+
     def execute_pick(self, target: str) -> int:
         """Method to execute the pick action"""
         if target not in TasksManipulation.OBJECTS_DICT:
@@ -62,21 +64,19 @@ class TasksManipulation:
         def manipulation_goal_feedback(feedback_msg):
             pass
 
-        rospy.loginfo("Sending Manipulation Goal")
-
-        self.pick_client.send_goal(
-                    manipulationPickAndPlaceGoal(object_id = target),
+        self.manipulation_client.send_goal(
+                    manipulationPickAndPlaceGoal(object_name = target),
                     feedback_cb=manipulation_goal_feedback,
             )
 
-        rospy.loginfo(f"Object ID: {target}")
-        self.pick_client.wait_for_result()
-        result = self.pick_client.get_result()
+        rospy.loginfo(f"Target: {target}")
+        self.manipulation_client.wait_for_result()
+        result = self.manipulation_client.get_result()
         return TasksManipulation.STATE["EXECUTION_SUCCESS"] if result.result else TasksManipulation.STATE["EXECUTION_ERROR"]
 
     def cancel_command(self) -> None:
         """Method to cancel the current command"""
-        self.pick_client.cancel_all_goals()
+        self.manipulation_client.cancel_all_goals()
         rospy.loginfo("Command canceled Manipulation")
 
 if __name__ == "__main__":
