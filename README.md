@@ -76,6 +76,14 @@ Additional commands can be added within the Makefile and the scripts inside the 
 
 The `frida_task_manager` is the central package in charge of processing the command information and directing the tasks with its respective area. For code readability, each area development its inside a Python module `area_tasks.py`, and they are called by `task_manager_server.py`, the script were the ROS node is created.
 
+At the top of this mentioned file, there are four constants to enable or disable the tasks, you can change any of these to `False` is for the current test there is no need of an area:
+```python
+NAV_ENABLED = True 
+MANIPULATION_ENABLED = True
+CONVERSATION_ENABLED = True 
+VISION_ENABLED = False
+```
+
 For executing the `task_manager`, follow the above steps of [Docker setup](#Docker%20Development). Inside the `bash` terminal, setup the ROS network and execute the node:
 ```bash
 export ROS_MASTER_URI=http://192.168.31.23:11311 # IP of the ROS Master (if master is in another machine)
