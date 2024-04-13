@@ -18,14 +18,15 @@ from frida_hri_interfaces.msg import ConversateAction, ConversateFeedback, Conve
 ### Python submodules
 from hri_tasks import TasksHRI
 from manipulation_tasks import TasksManipulation
+from nav_tasks import TasksNav
 
 COMMANDS_TOPIC = "/task_manager/commands"
 SPEAK_TOPIC = "/speech/speak"
 CONVERSATION_SERVER = "/conversation_as"
 
 NAV_ENABLED = False
-MANIPULATION_ENABLED = True 
-CONVERSATION_ENABLED = True
+MANIPULATION_ENABLED = True
+CONVERSATION_ENABLED = False
 VISION_ENABLED = False
 
 AREAS = ["nav", "manipulation", "hri", "vision"]
@@ -49,7 +50,7 @@ class TaskManagerServer:
     }
 
     COMMANDS_CATEGORY = {
-        "nav" : ["go", "follow", "stop", "approach"],
+        "nav" : ["go", "follow", "stop", "approach", "remember"],
         "manipulation" : ["pick", "place", "grasp", "give", "open", "close"],
         "hri" : ["ask", "interact", "feedback"],
         "vision" : ["find", "identify", "count"]
@@ -68,21 +69,17 @@ class TaskManagerServer:
             self.subtask_manager["hri"].speak("Hi, my name is Frida. I'm here to help you with your domestic tasks")
         if MANIPULATION_ENABLED:
             self.subtask_manager["manipulation"] = TasksManipulation()
-        #if NAV_ENABLED:
-            #self.subtask_manager["nav"] = TasksNavigation() 
+        if NAV_ENABLED:
+            self.subtask_manager["nav"] = TasksNav()
         #if VISION_ENABLED:
             #self.subtask_manager["vision"] = TasksVision()
 
         self.current_state = TaskManagerServer.STATE_ENUM["IDLE"]
+        self.current_past_state = None
         self.current_command = None
         self.current_queue = []
-        self.current_thread = None
-        self.current_location = None
-        self.past_location = None
-        self.grabbed_object = ""
         self.perceived_information = ""
 
-        #rospy.spin()
         self.run()
 
     def commands_callback(self, commands_input: CommandList) -> None:
@@ -97,18 +94,14 @@ class TaskManagerServer:
             return
 
         if self.current_state != TaskManagerServer.STATE_ENUM["IDLE"]:
-            rospy.logerror("Cancelling current commands and executing new received ")
+            rospy.logerr("Cancelling current commands and executing new received ")
             self.current_queue = []
             self.cancel_command()
             self.current_state = TaskManagerServer.STATE_ENUM["IDLE"]
 
-        current_thread = uuid.uuid1() # Generate a new thread id
-        self.current_thread = current_thread
-
         self.current_state = TaskManagerServer.STATE_ENUM["RECEIVE_COMMANDS"]
         self.current_queue = commands_input.commands
         self.past_state = self.current_state
-        self.past_location = self.current_location
 
         #self.say("I 'have finished my tasks, I'm going to rest now")
 
@@ -117,15 +110,18 @@ class TaskManagerServer:
 
         rospy.loginfo(f"Executing command: {command.action} -> {command.complement}")
 
+        task_result = 0
         for area in AREAS:
-            if command.action in TaskManagerServer.COMMANDS_CATEGORY[area]:
-                task_feedback = self.subtask_manager[area].execute_command(command.action, command.complement, self.perceived_information)
+            if command.action in TaskManagerServer.COMMANDS_CATEGORY[area] and AREA_ENABLED[area]:
+                task_result = self.subtask_manager[area].execute_command(
+                    command.action, command.complement, self.perceived_information
+                )
 
-        if task_feedback == -1:
-            rospy.logerror("Error in task execution")
+        if task_result == -1:
+            rospy.logerr("Error in task execution")
             return TaskManagerServer.STATE_ENUM["ERROR"]
 
-        self.perceived_information += f"{command.action} {command.complement} {task_feedback} "
+        self.perceived_information += f"{command.action} {command.complement} {task_result} "
         return TaskManagerServer.STATE_ENUM["EXECUTING_COMMANDS"]
 
     def cancel_command(self) -> None:
@@ -142,18 +138,18 @@ class TaskManagerServer:
                 self.current_command = self.current_queue.pop(0)
                 self.status = self.execute_command(self.current_command)
                 if self.status == TaskManagerServer.STATE_ENUM["ERROR"]:
-                    rospy.logerror("Error in command manager")
+                    rospy.logerr("Error in command manager")
                     self.current_state = TaskManagerServer.STATE_ENUM["ERROR"]
                     self.cancel_command()
                     self.current_queue = []
                     self.state = TaskManagerServer.STATE_ENUM["IDLE"]
                     self.past_state = self.status
-                    break
+                    continue
             elif self.current_state != TaskManagerServer.STATE_ENUM["IDLE"]:
                 self.current_thread = None
                 self.current_queue = []
                 self.current_state = TaskManagerServer.STATE_ENUM["IDLE"]
-                self.hri_task_manager.speak("I have finished my tasks, I'm going to rest now")
+                #self.subtask_manager["hri"].speak("I have finished my tasks, I'm going to rest now")
             self._rate.sleep()
 
 
@@ -161,5 +157,4 @@ if __name__ == "__main__":
     try:
         TaskManagerServer()
     except rospy.ROSInterruptException as e:
-        rospy.logerr("Error: {}".format(e))
-        pass
+        rospy.logerr(f'Error: {e}')

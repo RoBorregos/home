@@ -10,17 +10,11 @@ import actionlib
 
 ### ROS messages
 from std_msgs.msg import String
-from frida_hri_interfaces.msg import Command, CommandList
 from frida_hri_interfaces.msg import ConversateAction, ConversateFeedback, ConversateGoal, ConversateResult
 from frida_hri_interfaces.srv import Speak
 
-COMMANDS_TOPIC = "/task_manager/commands"
 SPEAK_TOPIC = "/speech/speak"
 CONVERSATION_SERVER = "/conversation_as"
-
-NAV_ENABLED = False
-MANIPULATION_ENABLED = False
-CONVERSATION_ENABLED = True
 
 class TasksHRI:
     STATE_ENUM = {
@@ -37,7 +31,10 @@ class TasksHRI:
     def __init__(self) -> None:
         self.conversation_client = actionlib.SimpleActionClient(CONVERSATION_SERVER, ConversateAction)
         #self.pub_speak = rospy.Publisher(SPEAK_TOPIC, String, queue_size=10)
-        rospy.wait_for_service(SPEAK_TOPIC)
+        try:
+            rospy.wait_for_service(SPEAK_TOPIC, timeout=5.0)
+        except rospy.ROSException:
+            rospy.logerr("Conversation service not available")
         self.speak_client = rospy.ServiceProxy(SPEAK_TOPIC, Speak)
 
         rospy.loginfo("HRI Task Manager initialized")
