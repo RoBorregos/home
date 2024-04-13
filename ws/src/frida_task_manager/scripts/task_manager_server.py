@@ -24,9 +24,9 @@ COMMANDS_TOPIC = "/task_manager/commands"
 SPEAK_TOPIC = "/speech/speak"
 CONVERSATION_SERVER = "/conversation_as"
 
-NAV_ENABLED = True
+NAV_ENABLED = False
 MANIPULATION_ENABLED = True
-CONVERSATION_ENABLED = True
+CONVERSATION_ENABLED = False
 VISION_ENABLED = False
 
 AREAS = ["nav", "manipulation", "hri", "vision"]
@@ -75,15 +75,11 @@ class TaskManagerServer:
             #self.subtask_manager["vision"] = TasksVision()
 
         self.current_state = TaskManagerServer.STATE_ENUM["IDLE"]
+        self.current_past_state = None
         self.current_command = None
         self.current_queue = []
-        self.current_thread = None
-        self.current_location = None
-        self.past_location = None
-        self.grabbed_object = ""
         self.perceived_information = ""
 
-        #rospy.spin()
         self.run()
 
     def commands_callback(self, commands_input: CommandList) -> None:
@@ -106,7 +102,6 @@ class TaskManagerServer:
         self.current_state = TaskManagerServer.STATE_ENUM["RECEIVE_COMMANDS"]
         self.current_queue = commands_input.commands
         self.past_state = self.current_state
-        self.past_location = self.current_location
 
         #self.say("I 'have finished my tasks, I'm going to rest now")
 
@@ -162,5 +157,4 @@ if __name__ == "__main__":
     try:
         TaskManagerServer()
     except rospy.ROSInterruptException as e:
-        rospy.logerr("Error: {}".format(e))
-        pass
+        rospy.logerr(f'Error: {e}')
