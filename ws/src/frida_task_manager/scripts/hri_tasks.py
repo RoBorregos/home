@@ -69,7 +69,7 @@ class TasksHRI:
         self.conversation_client.cancel_all_goals()
         rospy.loginfo("Command canceled HRI")
 
-    def get_guest_info(self, guest_id: int) -> tuple[str, str]:
+    def get_guest_info(self, guest_id: int):
         """Method to get the guest information
         Returns the name and favorite drink of the guest"""
         rospy.wait_for_service("/guest_info")
