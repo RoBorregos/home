@@ -10,9 +10,10 @@ import actionlib
 
 ### ROS messages
 from std_msgs.msg import String
-from frida_hri_interfaces.msg import Command, CommandList
-from frida_hri_interfaces.msg import ConversateAction, ConversateFeedback, ConversateGoal, ConversateResult
 from frida_vision_interfaces.msg import Person, PersonList
+from frida_hri_interfaces.msg import Command, CommandList
+from frida_hri_interfaces.msg import GuestAnalysisAction, GuestAnalysisFeedback, GuestAnalysisGoal, GuestAnalysisResult
+from frida_hri_interfaces.srv import GuestInfo, GuestInfoResponse
 
 ### Python submodules
 from hri_tasks import TasksHRI
@@ -26,7 +27,7 @@ FACE_LOCATIONS_TOPIC = "/person_list"
 
 NAV_ENABLED = False
 MANIPULATION_ENABLED = True
-CONVERSATION_ENABLED = False
+CONVERSATION_ENABLED = True
 VISION_ENABLED = True
 
 AREAS = ["nav", "manipulation", "hri", "vision"]
@@ -42,10 +43,29 @@ STATES = {
     "WAITING_GUEST": 0,
     "SELF_INTRODUCTION": 1,
     "REQUEST_GUEST_INFORMATION": 2,
-    "STORE_INFORMATION": 3,
-    "ERROR": 4,
-    "SHUTDOWN": 5
+    "SAVE_USER_FACE": 3,
+    "GO_TO_LIVING_ROOM": 4,
+    "INTRODUCE_PEOPLE_TO_GUEST": 5,
+    "GAZE_AT_GUEST": 6,
+    "FIND_FREE_SEAT": 7,
+    "GAZE_AT_SEAT": 8,
+    "GO_TO_ENTRANCE": 9,
+    "ERROR": 20,
+    "SHUTDOWN": 100
 }
+
+class Guest:
+    """Class to store the information of the guest"""
+    def __init__(self, guest_id: int = 0, name: str = "", favorite_drink: str = "", description: str = "") -> None:
+        self.guest_id = guest_id
+        self.name = name
+        self.favorite_drink = favorite_drink
+        self.description = description
+    def set_info(self, name: str, favorite_drink: str) -> None:
+        self.name = name
+        self.favorite_drink = favorite_drink
+    def set_description(self, description: str) -> None:
+        self.description = description
 
 class ReceptionistTaskManager:
     """Class to manage different tasks divided by categories"""
@@ -68,7 +88,6 @@ class ReceptionistTaskManager:
 
         if CONVERSATION_ENABLED:
             self.subtask_manager["hri"] = TasksHRI()
-            self.subtask_manager["hri"].speak("Hi, my name is Frida. I'm here to help you with your domestic tasks")
         if MANIPULATION_ENABLED:
             self.subtask_manager["manipulation"] = TasksManipulation()
         if NAV_ENABLED:
@@ -88,7 +107,13 @@ class ReceptionistTaskManager:
         self.followed_person = "Unknown"
         self.arm_moving = False
 
-        self.current_queue = []
+        self.current_guest = 1
+
+        self.guests = [
+            Guest(0, "Adan", "beer", "Is wearing glasses, has dark brown hair, a blue t-shirt and shorts."),
+            Guest(1),
+            Guest(2),
+        ]
 
         self.run()
 
@@ -145,6 +170,51 @@ class ReceptionistTaskManager:
                     self.last_time = rospy.Time.now()
                     if self.follow_face():
                         self.current_state = STATES["SELF_INTRODUCTION"]
+
+            ### Self introduction 
+            elif self.current_state == STATES["SELF_INTRODUCTION"]:
+                self.subtask_manager["hri"].speak("Hi, my name is Frida. I'll be your receptionist today.", now=True)
+                self.current_state = STATES["REQUEST_GUEST_INFORMATION"]
+
+            ### Request name and favorite drink and store in current guest object
+            elif self.current_state == STATES["REQUEST_GUEST_INFORMATION"]:
+                self.subtask_manager["hri"].speak("Could you tell me your name and your favorite drink?", now=False)
+                name, drink = self.subtask_manager["hri"].get_guest_info( self.current_guest )
+                self.guests[self.current_guest].set_info(name, drink)
+                if name != "error":
+                    self.subtask_manager["hri"].speak(f"Nice to meet you {name}, please stay in front of me while I recognize your face.", now=False)
+                    self.current_state = STATES["SAVE_USER_FACE"]
+                else:
+                    self.subtask_manager["hri"].speak("I'm sorry, I didn't get your information.", now=False)
+
+            ### Store user face with its name and call image analysis
+            elif self.current_state == STATES["SAVE_USER_FACE"]:
+                if self.follow_face():
+                    self.subtask_manager["hri"].analyze_guest( self.current_guest )
+                    self.subtask_manager["vision"].save_face_name( self.guests[self.current_guest].name )
+                    self.subtask_manager["hri"].speak("I have saved your face, thank you. Please follow me to the living room.", now=False)
+                    self.current_state = STATES["GO_TO_LIVING_ROOM"]
+                else:
+                    self.subtask_manager["hri"].speak("I'm sorry, I couldn't recognize your face. Please stay in front of me.", now=False)
+
+            ### Navigate to the living room
+            elif self.current_state == STATES["GO_TO_LIVING_ROOM"]:
+                self.subtask_manager["nav"].execute_command("remember", "past location", "")
+                self.subtask_manager["hri"].speak("The host is already waiting for you there.", now=True)
+                #self.subtask_manager["manipulation"].move_arm_joints(500, 0)
+                #TODO: Face to front default arm position with arm server
+                self.subtask_manager["nav"].execute_command("go", "soccer", "")
+                self.current_state = STATES["INTRODUCE_PEOPLE_TO_GUEST"]
+
+            ### Introduce people to the guest
+            elif self.current_state == STATES["INTRODUCE_PEOPLE_TO_GUEST"]:
+                for guest in range(self.current_guest):
+                    self.followed_person = self.guests[guest].name
+                    self.follow_face()
+                    self.subtask_manager["hri"].speak(f"This is {self.guests[guest].name}.", now=False)
+                    self.subtask_manager["hri"].speak(f"It's favorite drink is {self.guests[guest].favorite_drink}.", now=False)
+                    self.guests[guest].set_description( self.subtask_manager["hri"].get_guest_description( guest ) )
+                    self.subtask_manager["hri"].speak(f"{self.guests[guest].description}", now=False)
 
             self._rate.sleep()
 
