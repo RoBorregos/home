@@ -14,6 +14,7 @@ from frida_hri_interfaces.msg import ConversateAction, ConversateFeedback, Conve
 from frida_hri_interfaces.srv import Speak
 
 SPEAK_TOPIC = "/speech/speak"
+SPEAK_NOW_TOPIC = "/speech/speak_now"
 CONVERSATION_SERVER = "/conversation_as"
 
 class TasksHRI:
@@ -30,11 +31,12 @@ class TasksHRI:
 
     def __init__(self) -> None:
         self.conversation_client = actionlib.SimpleActionClient(CONVERSATION_SERVER, ConversateAction)
-        #self.pub_speak = rospy.Publisher(SPEAK_TOPIC, String, queue_size=10)
+        self.pub_speak = rospy.Publisher(SPEAK_NOW_TOPIC, String, queue_size=10)
+
         try:
             rospy.wait_for_service(SPEAK_TOPIC, timeout=5.0)
         except rospy.ROSException:
-            rospy.logerr("Conversation service not available")
+            rospy.logerr("Speaker service not available")
         self.speak_client = rospy.ServiceProxy(SPEAK_TOPIC, Speak)
 
         rospy.loginfo("HRI Task Manager initialized")
@@ -61,10 +63,12 @@ class TasksHRI:
         self.conversation_client.cancel_all_goals()
         rospy.loginfo("Command canceled HRI")
 
-    def speak(self, text: str) -> None:
+    def speak(self, text: str, now: bool = False) -> None:
         """Method to publish directly text to the speech node"""
-        #self.pub_speak.publish(text)
-        self.speak_client(text)
+        if now:
+            self.pub_speak.publish(text)
+        else:
+            self.speak_client(text)
 
 if __name__ == "__main__":
     try:
