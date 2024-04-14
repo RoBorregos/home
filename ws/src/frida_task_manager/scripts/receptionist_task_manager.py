@@ -25,7 +25,7 @@ SPEAK_TOPIC = "/speech/speak"
 CONVERSATION_SERVER = "/conversation_as"
 FACE_LOCATIONS_TOPIC = "/person_list"
 
-NAV_ENABLED = False
+NAV_ENABLED = True
 MANIPULATION_ENABLED = True
 CONVERSATION_ENABLED = True
 VISION_ENABLED = True
@@ -173,7 +173,7 @@ class ReceptionistTaskManager:
 
             ### Self introduction 
             elif self.current_state == STATES["SELF_INTRODUCTION"]:
-                self.subtask_manager["hri"].speak("Hi, my name is Frida. I'll be your receptionist today.", now=True)
+                self.subtask_manager["hri"].speak("Hi, my name is Frida. I'll be your receptionist today.", now=False)
                 self.current_state = STATES["REQUEST_GUEST_INFORMATION"]
 
             ### Request name and favorite drink and store in current guest object
@@ -208,13 +208,14 @@ class ReceptionistTaskManager:
 
             ### Introduce people to the guest
             elif self.current_state == STATES["INTRODUCE_PEOPLE_TO_GUEST"]:
-                for guest in range(self.current_guest):
-                    self.followed_person = self.guests[guest].name
-                    self.follow_face()
-                    self.subtask_manager["hri"].speak(f"This is {self.guests[guest].name}.", now=False)
-                    self.subtask_manager["hri"].speak(f"It's favorite drink is {self.guests[guest].favorite_drink}.", now=False)
-                    self.guests[guest].set_description( self.subtask_manager["hri"].get_guest_description( guest ) )
-                    self.subtask_manager["hri"].speak(f"{self.guests[guest].description}", now=False)
+                self.followed_person = self.guests[0].name
+                self.follow_face()
+                self.subtask_manager["hri"].speak(f"This is {self.guests[0].name}.", now=False)
+                self.subtask_manager["hri"].speak(f"It's favorite drink is {self.guests[0].favorite_drink}.", now=False)
+                #self.guests[1].set_description( self.subtask_manager["hri"].get_guest_description( self.current_guest ) )
+                #TODO: Extract interpreted info
+                self.subtask_manager["hri"].speak(f"{self.guests[0].description}", now=False)
+                self.current_state = STATES["GAZE_AT_GUEST"]
 
             self._rate.sleep()
 
