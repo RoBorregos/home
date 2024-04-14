@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  std_srvs
 )
 
 
@@ -17,6 +18,11 @@ find_package(catkin REQUIRED COMPONENTS
 add_action_files(
   FILES
   navServ.action
+)
+
+add_service_files(
+  FILES
+  ViewAngle.srv
 )
 
 ## Generate added messages and services with any dependencies listed here
