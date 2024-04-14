@@ -10,10 +10,7 @@ import actionlib
 
 ### ROS messages
 from std_msgs.msg import String
-from std_srvs.srv import GetBool
-from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
-from geometry_msgs.msg import Pose
-from frida_navigation_interfaces.msg import navServAction, navServFeedback, navServGoal, navServResult
+from frida_vision_interfaces.srv import NewHost, NewHostResponse
 
 STORE_FACE_SERVICE = "/new_name"
 
@@ -29,18 +26,15 @@ class TasksVision:
 
     def __init__(self) -> None:
         """Initialize the ROS node""" 
-        self.save_name_service = rospy.ServiceProxy(STORE_FACE_SERVICE, GetBool)
+        self.save_name_call = rospy.ServiceProxy(STORE_FACE_SERVICE, NewHost)
 
-        if not self.save_name_service.wait_for_service(timeout=rospy.Duration(10.0)):
-            rospy.logerr("Save name service not initialized")
+        self.save_name_call.wait_for_service(timeout=rospy.Duration(10.0))
+        
+        rospy.loginfo("Vision Task Manager initialized")
 
     def execute_command(self, command: str, target: str, info: str) -> int:
         """Method to execute each command"""
         rospy.loginfo("Nav Command")
-
-        if command == "save":
-
-
 
         return TasksVision.STATE["EXECUTION_ERROR"]
     
@@ -48,7 +42,13 @@ class TasksVision:
         """Method to save the face name"""
         rospy.loginfo("Save face name")
         try:
-            response = self.save_name_service(
+            response = self.save_name_call( name )
+            if response.success:
+                return TasksVision.STATE["EXECUTION_SUCCESS"]
+        except rospy.ServiceException:
+            rospy.logerr("Service call name failed")
+
+        return TasksVision.STATE["EXECUTION_ERROR"]
 
     def cancel_command(self) -> None:
         """Method to cancel the current command"""
