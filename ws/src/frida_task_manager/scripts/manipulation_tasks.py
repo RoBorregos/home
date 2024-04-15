@@ -12,9 +12,12 @@ import actionlib
 from std_msgs.msg import String, Int32
 from frida_hri_interfaces.msg import Command, CommandList
 from frida_manipulation_interfaces.msg import manipulationPickAndPlaceAction, manipulationPickAndPlaceGoal, manipulationPickAndPlaceResult, manipulationPickAndPlaceFeedback
+from frida_manipulation_interfaces.msg import MoveJointAction, MoveJointFeedback, MoveJointGoal, MoveJointResult
 
 MANIPULATION_SERVER = "/manipulationServer"
+ARM_JOINTS_SERVER = "/arm_joints_as"
 PLACE_TARGET = -5
+POUR_TARGET = -10
 
 class TasksManipulation:
     """Manager for the manipulation area tasks"""
@@ -36,8 +39,12 @@ class TasksManipulation:
 
     def __init__(self) -> None:
         self.manipulation_client = actionlib.SimpleActionClient(MANIPULATION_SERVER, manipulationPickAndPlaceAction)
+        self.arm_joints_client = actionlib.SimpleActionClient(ARM_JOINTS_SERVER, MoveJointAction)
+
         if not self.manipulation_client.wait_for_server(timeout=rospy.Duration(10.0)):
             rospy.logerr("Manipulation server not initialized")
+        if not self.arm_joints_client.wait_for_server(timeout=rospy.Duration(10.0)):
+            rospy.logerr("Arm joints server not initialized")
 
         rospy.loginfo("Manipulation Task Manager initialized")
 
@@ -73,6 +80,15 @@ class TasksManipulation:
         self.manipulation_client.wait_for_result()
         result = self.manipulation_client.get_result()
         return TasksManipulation.STATE["EXECUTION_SUCCESS"] if result.result else TasksManipulation.STATE["EXECUTION_ERROR"]
+    
+    def move_arm_joints(self, target_x: int, target_y: int) -> int:
+        """Method to move the arm joints"""
+        self.arm_joints_client.send_goal(
+            MoveJointGoal(target_delta_x = target_x, target_delta_y = target_y)
+        )
+        self.arm_joints_client.wait_for_result()
+        result = self.arm_joints_client.get_result()
+        return TasksManipulation.STATE["EXECUTION_SUCCESS"] if result.success else TasksManipulation.STATE["EXECUTION_ERROR"]
 
     def cancel_command(self) -> None:
         """Method to cancel the current command"""

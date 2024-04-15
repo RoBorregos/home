@@ -14,10 +14,11 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
 )
 
-# add_service_files(
-#   FILES
-#   EnableOctomap.srv
-# )
+add_service_files(
+  FILES
+  Gripper.srv
+#  EnableOctomap.srv
+)
 
 # add_message_files(
 #   FILES
@@ -29,12 +30,14 @@ find_package(catkin REQUIRED COMPONENTS
 add_action_files(
   FILES
   manipulationPickAndPlace.action
+  MoveJoint.action
 )
 
 generate_messages(
   DEPENDENCIES
   actionlib_msgs
   std_msgs
+  geometry_msgs
 )
 
 catkin_package(
