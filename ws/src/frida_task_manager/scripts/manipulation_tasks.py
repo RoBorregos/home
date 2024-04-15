@@ -41,9 +41,9 @@ class TasksManipulation:
         self.manipulation_client = actionlib.SimpleActionClient(MANIPULATION_SERVER, manipulationPickAndPlaceAction)
         self.arm_joints_client = actionlib.SimpleActionClient(ARM_JOINTS_SERVER, MoveJointAction)
 
-        if not self.manipulation_client.wait_for_server(timeout=rospy.Duration(10.0)):
+        if not self.manipulation_client.wait_for_server(timeout=rospy.Duration(5.0)):
             rospy.logerr("Manipulation server not initialized")
-        if not self.arm_joints_client.wait_for_server(timeout=rospy.Duration(10.0)):
+        if not self.arm_joints_client.wait_for_server(timeout=rospy.Duration(5.0)):
             rospy.logerr("Arm joints server not initialized")
 
         rospy.loginfo("Manipulation Task Manager initialized")
