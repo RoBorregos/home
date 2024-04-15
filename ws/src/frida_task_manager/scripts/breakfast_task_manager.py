@@ -24,7 +24,7 @@ CONVERSATION_SERVER = "/conversation_as"
 
 NAV_ENABLED = True
 MANIPULATION_ENABLED = True
-CONVERSATION_ENABLED = False
+CONVERSATION_ENABLED = True
 VISION_ENABLED = False
 
 AREAS = ["nav", "manipulation", "hri", "vision"]
@@ -79,10 +79,18 @@ class TaskManagerServer:
         self.perceived_information = ""
 
         self.current_queue = [
+            Command(action="remember", complement="location"),
+            Command(action="pick", complement="bowl"),
+            Command(action="go", complement="home table"),
+            Command(action="place", complement="bowl"),
+            Command(action="go", complement="past location"),
             Command(action="pick", complement="zucaritas"),
+            Command(action="go", complement="home table"),
             Command(action="pour", complement="zucaritas"),
             Command(action="place", complement="zucaritas"),
+            Command(action="go", complement="past location"),
             Command(action="pick", complement="cocacola"),
+            Command(action="go", complement="home table"),
             Command(action="pour", complement="cocacola"),
             Command(action="place", complement="cocacola")
         ]
@@ -116,6 +124,8 @@ class TaskManagerServer:
         """Method for executing a single command inside its area submodule"""
 
         rospy.loginfo(f"Executing command: {command.action} -> {command.complement}")
+        if command.action != "remember":
+            self.subtask_manager["hri"].speak(f"I'll {command.action} {command.complement}", now=True)
 
         task_result = 0
         for area in AREAS:
