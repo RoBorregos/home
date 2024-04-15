@@ -15,6 +15,9 @@ from frida_manipulation_interfaces.msg import manipulationPickAndPlaceAction, ma
 
 MANIPULATION_SERVER = "/manipulationServer"
 PLACE_TARGET = -5
+POUR_TARGET = -10
+
+FAKE_TASKS = True
 
 class TasksManipulation:
     """Manager for the manipulation area tasks"""
@@ -35,19 +38,23 @@ class TasksManipulation:
     }
 
     def __init__(self) -> None:
-        self.manipulation_client = actionlib.SimpleActionClient(MANIPULATION_SERVER, manipulationPickAndPlaceAction)
-        if not self.manipulation_client.wait_for_server(timeout=rospy.Duration(10.0)):
-            rospy.logerr("Manipulation server not initialized")
+        if not FAKE_TASKS:
+            rospy.loginfo("[INFO] Waiting for manipulation server")
+            self.manipulation_client = actionlib.SimpleActionClient(MANIPULATION_SERVER, manipulationPickAndPlaceAction)
+            if not self.manipulation_client.wait_for_server(timeout=rospy.Duration(10.0)):
+                rospy.logerr("Manipulation server not initialized")
 
-        rospy.loginfo("Manipulation Task Manager initialized")
+        rospy.loginfo("[SUCCESS] Manipulation Task Manager initialized")
 
     def execute_command(self, command: str, target: str, info: str) -> int:
         """Method to execute each command"""
-        rospy.loginfo("Manipulation Command")
+        rospy.loginfo("[INFO] Manipulation Command")
         if command == "pick":
             return self.execute_pick_and_place( target )
         if command in ("place", "pour"):
             return self.execute_pick_and_place( command )
+        if command in ("give"):
+            return self.execute_give()
 
         return -1
 
@@ -56,28 +63,47 @@ class TasksManipulation:
         if target not in TasksManipulation.OBJECTS_DICT:
             rospy.logerr("Object not found")
             return TasksManipulation.STATE["EXECUTION_ERROR"]
-        return self.execute_pick_and_place( TasksManipulation.OBJECTS_DICT[target] )
+        if not FAKE_TASKS:
+            return self.execute_pick_and_place( TasksManipulation.OBJECTS_DICT[target] )
+        else:
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"]
 
     def execute_pick_and_place(self, target: int) -> int:
         """Method to call the pick and place action server"""
 
         def manipulation_goal_feedback(feedback_msg):
             pass
+        
+        
+        rospy.loginfo(f"[INFO] Manipulation Target: {target}")
+        
+        if not FAKE_TASKS:
+            self.manipulation_client.send_goal(
+                        manipulationPickAndPlaceGoal(object_name = target),
+                        feedback_cb=manipulation_goal_feedback,
+                )
 
-        self.manipulation_client.send_goal(
-                    manipulationPickAndPlaceGoal(object_name = target),
-                    feedback_cb=manipulation_goal_feedback,
-            )
-
-        rospy.loginfo(f"Target: {target}")
-        self.manipulation_client.wait_for_result()
-        result = self.manipulation_client.get_result()
-        return TasksManipulation.STATE["EXECUTION_SUCCESS"] if result.result else TasksManipulation.STATE["EXECUTION_ERROR"]
+            self.manipulation_client.wait_for_result()
+            result = self.manipulation_client.get_result()
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"] if result.result else TasksManipulation.STATE["EXECUTION_ERROR"]
+        else:
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"]
+    
+    def execute_give(self) -> int:
+        rospy.loginfo(f"[INFO] Giving")
+        if not FAKE_TASKS:
+            # execute give
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"]
+        else:
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"]
 
     def cancel_command(self) -> None:
         """Method to cancel the current command"""
-        self.manipulation_client.cancel_all_goals()
-        rospy.loginfo("Command canceled Manipulation")
+        if not FAKE_TASKS:
+            self.manipulation_client.cancel_all_goals()
+            rospy.loginfo("Command canceled Manipulation")
+        else:
+            rospy.loginfo("Command canceled Manipulation")
 
 if __name__ == "__main__":
     try:

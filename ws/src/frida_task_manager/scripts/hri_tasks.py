@@ -16,6 +16,8 @@ from frida_hri_interfaces.srv import Speak
 SPEAK_TOPIC = "/speech/speak"
 CONVERSATION_SERVER = "/conversation_as"
 
+FAKE_TASK = True
+
 class TasksHRI:
     STATE_ENUM = {
         "IDLE": 0,
@@ -29,42 +31,49 @@ class TasksHRI:
     AREA_TASKS = ["ask", "interact", "feedback"]
 
     def __init__(self) -> None:
-        self.conversation_client = actionlib.SimpleActionClient(CONVERSATION_SERVER, ConversateAction)
-        #self.pub_speak = rospy.Publisher(SPEAK_TOPIC, String, queue_size=10)
-        try:
-            rospy.wait_for_service(SPEAK_TOPIC, timeout=5.0)
-        except rospy.ROSException:
-            rospy.logerr("Conversation service not available")
-        self.speak_client = rospy.ServiceProxy(SPEAK_TOPIC, Speak)
+        if not FAKE_TASK:
+            self.conversation_client = actionlib.SimpleActionClient(CONVERSATION_SERVER, ConversateAction)
+            #self.pub_speak = rospy.Publisher(SPEAK_TOPIC, String, queue_size=10)
+            try:
+                rospy.wait_for_service(SPEAK_TOPIC, timeout=5.0)
+            except rospy.ROSException:
+                rospy.logerr("Conversation service not available")
+            self.speak_client = rospy.ServiceProxy(SPEAK_TOPIC, Speak)
+        else:
+            rospy.loginfo("[INFO] Fake HRI Task Manager initialized")
 
-        rospy.loginfo("HRI Task Manager initialized")
+        rospy.loginfo("[SUCCESS] HRI Task Manager initialized")
 
     def execute_command(self, command: str, complement: str, perceived_information: str) -> int:
         """Method to execute each command"""
-        rospy.loginfo("HRI Command")
+        rospy.loginfo("[INFO] HRI Command")
         composed_request = f"{command}: {complement}, perceived info: {perceived_information}"
 
         goal = ConversateGoal()
         goal.request = composed_request
         goal.wait = 0 if command == "feedback" else 1
 
-        self.conversation_client.send_goal(goal)
-        if goal.wait:
-            self.conversation_client.wait_for_result()
-            result = self.conversation_client.get_result()
-            #rospy.loginfo(f"Result: {result.success}")
-            return result.success
+        if not FAKE_TASK:
+            self.conversation_client.send_goal(goal)
+            if goal.wait:
+                self.conversation_client.wait_for_result()
+                result = self.conversation_client.get_result()
+                #rospy.loginfo(f"Result: {result.success}")
+                return result.success
         return 1
         
     def cancel_command(self) -> None:
         """Method to cancel the current command"""
         self.conversation_client.cancel_all_goals()
-        rospy.loginfo("Command canceled HRI")
+        rospy.loginfo("[INFO] Command canceled HRI")
 
     def speak(self, text: str) -> None:
         """Method to publish directly text to the speech node"""
         #self.pub_speak.publish(text)
-        self.speak_client(text)
+        if not FAKE_TASK:
+            self.speak_client(text)
+        else:
+            rospy.loginfo(f"[INFO] Speaking: {text}")
 
 if __name__ == "__main__":
     try:
