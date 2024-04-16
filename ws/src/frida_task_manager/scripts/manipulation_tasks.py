@@ -81,11 +81,16 @@ class TasksManipulation:
         result = self.manipulation_client.get_result()
         return TasksManipulation.STATE["EXECUTION_SUCCESS"] if result.result else TasksManipulation.STATE["EXECUTION_ERROR"]
     
-    def move_arm_joints(self, target_x: int, target_y: int) -> int:
+    def move_arm_joints(self, target_x: int, target_y: int, position: str = "") -> int:
         """Method to move the arm joints"""
-        self.arm_joints_client.send_goal(
-            MoveJointGoal(target_delta_x = target_x, target_delta_y = target_y)
-        )
+        if position != "":
+            self.arm_joints_client.send_goal(
+                MoveJointGoal(predefined_position = position)
+            )
+        else:
+            self.arm_joints_client.send_goal(
+                MoveJointGoal(target_delta_x = target_x, target_delta_y = target_y)
+            )
         self.arm_joints_client.wait_for_result()
         result = self.arm_joints_client.get_result()
         return TasksManipulation.STATE["EXECUTION_SUCCESS"] if result.success else TasksManipulation.STATE["EXECUTION_ERROR"]
