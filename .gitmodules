@@ -10,3 +10,6 @@
 [submodule "navigation"]
 	path = navigation
 	url = https://github.com/RoBorregos/home-navigation.git
+[submodule "ws/src/interfaces"]
+	path = ws/src/interfaces
+	url = https://github.com/RoBorregos/home-interfaces
