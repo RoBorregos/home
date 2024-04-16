@@ -111,7 +111,7 @@ class ReceptionistTaskManager:
         self.current_guest = 1
 
         self.guests = [
-            Guest(0, "Adan", "beer", "Is wearing glasses, has dark brown hair, a blue t-shirt and shorts."),
+            Guest(0, "Adan", "beer", "Is wearing glasses, has dark brown hair, a black t-shirt and shorts."),
             Guest(1),
             Guest(2),
         ]
@@ -130,10 +130,13 @@ class ReceptionistTaskManager:
             self.arm_moving = True
             for face in self.detected_faces:
                 if face.name == self.followed_person:
+                    print("vefore")
                     self.subtask_manager["manipulation"].move_arm_joints(face.x, face.y)
+                    print("after")
                     self.arm_moving = False
                     self.detected_faces = []
                     return True
+            self.arm_moving = False
         return False
 
     def execute_command(self, command: Command) -> int:
@@ -163,10 +166,13 @@ class ReceptionistTaskManager:
 
     def run(self) -> None:
         """Main loop for the task manager"""
+
         while not rospy.is_shutdown():
             dt = rospy.Time.now() - self.last_time # Time from last iteration
 
             if self.current_state == STATES["WAITING_GUEST"]:
+                rospy.loginfo("Waiting for guest")
+                self.followed_person = "Unknown"
                 self.subtask_manager["manipulation"].move_arm_joints(0, 0, "face_detection")
                 if self.subtask_manager["vision"].check_person():
                     self.follow_face()
@@ -174,13 +180,15 @@ class ReceptionistTaskManager:
 
             ### Self introduction
             elif self.current_state == STATES["SELF_INTRODUCTION"]:
-                self.subtask_manager["hri"].speak("Hi, my name is Frida. I'll be your receptionist today.", now=False)
+                rospy.loginfo("Self introduction")
                 self.follow_face()
+                self.subtask_manager["hri"].speak("Hi, my name is Frida. I'll be your receptionist today. Could you tell me your name and your favorite drink?", now=False)
                 self.current_state = STATES["REQUEST_GUEST_INFORMATION"]
 
             ### Request name and favorite drink and store in current guest object
             elif self.current_state == STATES["REQUEST_GUEST_INFORMATION"]:
-                self.subtask_manager["hri"].speak("Could you tell me your name and your favorite drink?", now=False)
+                rospy.loginfo("Request guest information")
+                #self.subtask_manager["hri"].speak("Could you tell me your name and your favorite drink?", now=False)
                 name, drink = self.subtask_manager["hri"].get_guest_info( self.current_guest )
                 self.guests[self.current_guest].set_info(name, drink)
                 if name != "error":
@@ -191,30 +199,35 @@ class ReceptionistTaskManager:
 
             ### Store user face with its name and call image analysis
             elif self.current_state == STATES["SAVE_USER_FACE"]:
+                rospy.loginfo("Save user face")
                 if self.follow_face():
                     self.subtask_manager["hri"].analyze_guest( self.current_guest )
                     self.subtask_manager["vision"].save_face_name( self.guests[self.current_guest].name )
-                    self.subtask_manager["hri"].speak("I have saved your face, thank you. Please follow me to the living room.", now=False)
+                    self.subtask_manager["hri"].speak("I have saved your face, thank you. Please follow me to the living room.", now=True)
                     self.current_state = STATES["GO_TO_LIVING_ROOM"]
                 else:
                     self.subtask_manager["hri"].speak("I'm sorry, I couldn't recognize your face. Please stay in front of me.", now=False)
 
             ### Navigate to the living room
             elif self.current_state == STATES["GO_TO_LIVING_ROOM"]:
-                self.subtask_manager["nav"].execute_command("remember", "past location", "")
+                rospy.loginfo("Go to living room")
+                #self.subtask_manager["nav"].execute_command("remember", "past location", "")
                 self.subtask_manager["hri"].speak("The host is already waiting for you there.", now=True)
                 self.subtask_manager["manipulation"].move_arm_joints(0, 0, "face_detection")
                 #TODO: Face to front default arm position with arm server
-                self.subtask_manager["nav"].execute_command("go", "soccer", "")
+                self.subtask_manager["nav"].execute_command("go", "living_room", "")
                 self.current_state = STATES["INTRODUCE_PEOPLE_TO_GUEST"]
 
             ### Introduce people to the guest
             elif self.current_state == STATES["INTRODUCE_PEOPLE_TO_GUEST"]:
-                self.guests[self.current_guest].set_description( self.subtask_manager["hri"].get_guest_description( self.current_guest ) )
-                for g_id in range(len(self.current_guest)): # Check all guests before the current one
+                rospy.loginfo("Introduce people to guest")
+                description = self.subtask_manager["hri"].get_guest_description( self.current_guest )
+                self.guests[self.current_guest].set_description( description )
+                for g_id in range(self.current_guest): # Check all guests before the current one
                     self.followed_person = self.guests[g_id].name
                     while not self.follow_face(): # Keep following the face until it's recognize IMPROVE
-                        pass
+                        time.sleep(1)
+                        rospy.loginfo("rip")
                     self.subtask_manager["hri"].speak(f"This is {self.guests[g_id].name}.", now=False)
                     self.subtask_manager["hri"].speak(f"It's favorite drink is {self.guests[g_id].favorite_drink}.", now=False)
                     #TODO: Extract interpreted info
@@ -223,37 +236,47 @@ class ReceptionistTaskManager:
 
             ### Gaze at the current guest and inform next action
             elif self.current_state == STATES["GAZE_AT_GUEST"]:
+                rospy.loginfo("Gaze at guest")
                 self.subtask_manager["manipulation"].move_arm_joints(0, 0, "back")
                 self.followed_person = self.guests[self.current_guest].name
                 while not self.follow_face():
-                    pass
-                self.subtask_manager["hri"].speak("I'll find you a free seat, please wait.", now=False)
-                self.subtask_manager["manipulation"].move_arm_joints(0, 0, "face_detection")
+                    time.sleep(1)
+                    rospy.loginfo("rip")
+                self.subtask_manager["hri"].speak("I'll find you a free seat, please wait.", now=True)
+                self.subtask_manager["manipulation"].move_arm_joints(0, 0, "seat")
                 self.current_state = STATES["FIND_FREE_SEAT"]
 
             ### Find a free seat for the guest
             elif self.current_state == STATES["FIND_FREE_SEAT"]:
-                seat_angle = self.subtask_manager["vision"].find_seat( self.current_guest )
-                self.subtask_manager["manipulation"].move_arm_joints(0, 0, "seat")
-                self.subtask_manager["manipulation"].move_arm_joints(seat_angle, 0)
-                self.subtask_manager["hri"].speak("I have found a free seat for you, please follow the direction of my arm.", now=False)
+                rospy.loginfo("Find free seat")
+                seat_angle = self.subtask_manager["vision"].find_seat()
+                if seat_angle == 300:
+                    self.subtask_manager["hri"].speak("I'm sorry, I couldn't find a free seat for you. Please sit where you prefer", now=True)
+                else: 
+                    #self.subtask_manager["manipulation"].move_arm_joints(0, 0, "seat")
+                    self.subtask_manager["hri"].speak("I have found a free seat for you, please follow the direction of my arm.", now=True)
+                    self.subtask_manager["manipulation"].move_arm_joints(seat_angle, 0)
                 self.current_state = STATES["WAIT_USER_TO_SIT"]
 
             ### Wait for the user to sit
             elif self.current_state == STATES["WAIT_USER_TO_SIT"]:
+                rospy.loginfo("Wait user to sit")
                 time.sleep(2)
                 while not self.follow_face():
+                    time.sleep(1)
+                    rospy.loginfo("rip")
                     pass
-                self.subtask_manager["hri"].speak("I've detected you took your seat. I'll go back to the entrance now.", now=False)
+                self.subtask_manager["hri"].speak("I've detected you took your seat. I'll go back to the entrance now.", now=True)
                 if self.current_guest < len(self.guests):
                     self.current_guest += 1
                     self.current_state = STATES["GO_TO_ENTRANCE"]
                 else:
-                    self.current_state = STATES["SHUTDOWN"] 
+                    self.current_state = STATES["SHUTDOWN"]
 
             ### Go back to the entrance
             elif self.current_state == STATES["GO_TO_ENTRANCE"]:
-                self.subtask_manager["nav"].execute_command("go", "past location", "")
+                rospy.loginfo("Go to entrance")
+                self.subtask_manager["nav"].execute_command("go", "entrance", "")
                 self.subtask_manager["manipulation"].move_arm_joints(0, 0, "face_detection")
                 self.current_state = STATES["WAITING_GUEST"]
 
