@@ -7,6 +7,7 @@ Task manager for the Breakfast task of RoboCup @Home 2024
 ### Import libraries
 import rospy
 import actionlib
+import time
 
 ### ROS messages
 from std_msgs.msg import String
@@ -48,7 +49,7 @@ STATES = {
     "INTRODUCE_PEOPLE_TO_GUEST": 5,
     "GAZE_AT_GUEST": 6,
     "FIND_FREE_SEAT": 7,
-    "GAZE_AT_SEAT": 8,
+    "WAIT_USER_TO_SIT": 8,
     "GO_TO_ENTRANCE": 9,
     "ERROR": 20,
     "SHUTDOWN": 100
@@ -166,14 +167,15 @@ class ReceptionistTaskManager:
             dt = rospy.Time.now() - self.last_time # Time from last iteration
 
             if self.current_state == STATES["WAITING_GUEST"]:
-                if dt.to_sec() > self.follow_sample_time:
-                    self.last_time = rospy.Time.now()
-                    if self.follow_face():
-                        self.current_state = STATES["SELF_INTRODUCTION"]
+                self.subtask_manager["manipulation"].move_arm_joints(0, 0, "face_detection")
+                if self.subtask_manager["vision"].check_person():
+                    self.follow_face()
+                    self.current_state = STATES["SELF_INTRODUCTION"]
 
-            ### Self introduction 
+            ### Self introduction
             elif self.current_state == STATES["SELF_INTRODUCTION"]:
                 self.subtask_manager["hri"].speak("Hi, my name is Frida. I'll be your receptionist today.", now=False)
+                self.follow_face()
                 self.current_state = STATES["REQUEST_GUEST_INFORMATION"]
 
             ### Request name and favorite drink and store in current guest object
@@ -201,21 +203,59 @@ class ReceptionistTaskManager:
             elif self.current_state == STATES["GO_TO_LIVING_ROOM"]:
                 self.subtask_manager["nav"].execute_command("remember", "past location", "")
                 self.subtask_manager["hri"].speak("The host is already waiting for you there.", now=True)
-                #self.subtask_manager["manipulation"].move_arm_joints(500, 0)
+                self.subtask_manager["manipulation"].move_arm_joints(0, 0, "face_detection")
                 #TODO: Face to front default arm position with arm server
                 self.subtask_manager["nav"].execute_command("go", "soccer", "")
                 self.current_state = STATES["INTRODUCE_PEOPLE_TO_GUEST"]
 
             ### Introduce people to the guest
             elif self.current_state == STATES["INTRODUCE_PEOPLE_TO_GUEST"]:
-                self.followed_person = self.guests[0].name
-                self.follow_face()
-                self.subtask_manager["hri"].speak(f"This is {self.guests[0].name}.", now=False)
-                self.subtask_manager["hri"].speak(f"It's favorite drink is {self.guests[0].favorite_drink}.", now=False)
-                #self.guests[1].set_description( self.subtask_manager["hri"].get_guest_description( self.current_guest ) )
-                #TODO: Extract interpreted info
-                self.subtask_manager["hri"].speak(f"{self.guests[0].description}", now=False)
+                self.guests[self.current_guest].set_description( self.subtask_manager["hri"].get_guest_description( self.current_guest ) )
+                for g_id in range(len(self.current_guest)): # Check all guests before the current one
+                    self.followed_person = self.guests[g_id].name
+                    while not self.follow_face(): # Keep following the face until it's recognize IMPROVE
+                        pass
+                    self.subtask_manager["hri"].speak(f"This is {self.guests[g_id].name}.", now=False)
+                    self.subtask_manager["hri"].speak(f"It's favorite drink is {self.guests[g_id].favorite_drink}.", now=False)
+                    #TODO: Extract interpreted info
+                    self.subtask_manager["hri"].speak(f"{self.guests[g_id].description}", now=False)
                 self.current_state = STATES["GAZE_AT_GUEST"]
+
+            ### Gaze at the current guest and inform next action
+            elif self.current_state == STATES["GAZE_AT_GUEST"]:
+                self.subtask_manager["manipulation"].move_arm_joints(0, 0, "back")
+                self.followed_person = self.guests[self.current_guest].name
+                while not self.follow_face():
+                    pass
+                self.subtask_manager["hri"].speak("I'll find you a free seat, please wait.", now=False)
+                self.subtask_manager["manipulation"].move_arm_joints(0, 0, "face_detection")
+                self.current_state = STATES["FIND_FREE_SEAT"]
+
+            ### Find a free seat for the guest
+            elif self.current_state == STATES["FIND_FREE_SEAT"]:
+                seat_angle = self.subtask_manager["vision"].find_seat( self.current_guest )
+                self.subtask_manager["manipulation"].move_arm_joints(0, 0, "seat")
+                self.subtask_manager["manipulation"].move_arm_joints(seat_angle, 0)
+                self.subtask_manager["hri"].speak("I have found a free seat for you, please follow the direction of my arm.", now=False)
+                self.current_state = STATES["WAIT_USER_TO_SIT"]
+
+            ### Wait for the user to sit
+            elif self.current_state == STATES["WAIT_USER_TO_SIT"]:
+                time.sleep(2)
+                while not self.follow_face():
+                    pass
+                self.subtask_manager["hri"].speak("I've detected you took your seat. I'll go back to the entrance now.", now=False)
+                if self.current_guest < len(self.guests):
+                    self.current_guest += 1
+                    self.current_state = STATES["GO_TO_ENTRANCE"]
+                else:
+                    self.current_state = STATES["SHUTDOWN"] 
+
+            ### Go back to the entrance
+            elif self.current_state == STATES["GO_TO_ENTRANCE"]:
+                self.subtask_manager["nav"].execute_command("go", "past location", "")
+                self.subtask_manager["manipulation"].move_arm_joints(0, 0, "face_detection")
+                self.current_state = STATES["WAITING_GUEST"]
 
             self._rate.sleep()
 
