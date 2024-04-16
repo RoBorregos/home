@@ -64,16 +64,16 @@ class TasksVision:
             rospy.logerr("Service call check_person failed")
             return False
 
-    def find_seat(self, current_people: int) -> float:
+    def find_seat(self) -> int:
         """Method to find the angle the robot should turn to point the free seat"""
         try:
             rospy.wait_for_service(FIND_TOPIC, timeout=5.0)
             find_seat = rospy.ServiceProxy(FIND_TOPIC, FindSeat)
-            response = find_seat(current_people)
-            return response.angle
+            response = find_seat(True)
+            return int(response.angle)
         except rospy.ServiceException:
             rospy.logerr("Service call find_seat failed")
-            return 300.0  
+            return 300
 
     def cancel_command(self) -> None:
         """Method to cancel the current command"""
