@@ -228,10 +228,10 @@ class ReceptionistTaskManager:
                     while not self.follow_face(): # Keep following the face until it's recognize IMPROVE
                         time.sleep(1)
                         rospy.loginfo("rip")
-                    self.subtask_manager["hri"].speak(f"This is {self.guests[g_id].name}.", now=False)
-                    self.subtask_manager["hri"].speak(f"It's favorite drink is {self.guests[g_id].favorite_drink}.", now=False)
+                    self.subtask_manager["hri"].speak(f"This is {self.guests[g_id].name}. It's favorite drink is {self.guests[g_id].favorite_drink}.", now=False)
+                    #self.subtask_manager["hri"].speak(f"It's favorite drink is {self.guests[g_id].favorite_drink}.", now=False)
                     #TODO: Extract interpreted info
-                    self.subtask_manager["hri"].speak(f"{self.guests[g_id].description}", now=False)
+                    self.subtask_manager["hri"].speak(f"{self.guests[g_id].description}", now=g_id == self.current_guest-1)
                 self.current_state = STATES["GAZE_AT_GUEST"]
 
             ### Gaze at the current guest and inform next action
@@ -242,7 +242,7 @@ class ReceptionistTaskManager:
                 while not self.follow_face():
                     time.sleep(1)
                     rospy.loginfo("rip")
-                self.subtask_manager["hri"].speak("I'll find you a free seat, please wait.", now=True)
+                self.subtask_manager["hri"].speak(f"I'll find you a free seat {self.guests[self.current_guest].name}, please wait.", now=True)
                 self.subtask_manager["manipulation"].move_arm_joints(0, 0, "seat")
                 self.current_state = STATES["FIND_FREE_SEAT"]
 
@@ -252,10 +252,10 @@ class ReceptionistTaskManager:
                 seat_angle = self.subtask_manager["vision"].find_seat()
                 if seat_angle == 300:
                     self.subtask_manager["hri"].speak("I'm sorry, I couldn't find a free seat for you. Please sit where you prefer", now=True)
-                else: 
+                else:
                     #self.subtask_manager["manipulation"].move_arm_joints(0, 0, "seat")
                     self.subtask_manager["hri"].speak("I have found a free seat for you, please follow the direction of my arm.", now=True)
-                    self.subtask_manager["manipulation"].move_arm_joints(seat_angle, 0)
+                    self.subtask_manager["manipulation"].move_arm_joints(seat_angle, -20)
                 self.current_state = STATES["WAIT_USER_TO_SIT"]
 
             ### Wait for the user to sit
@@ -265,12 +265,12 @@ class ReceptionistTaskManager:
                 while not self.follow_face():
                     time.sleep(1)
                     rospy.loginfo("rip")
-                    pass
                 self.subtask_manager["hri"].speak("I've detected you took your seat. I'll go back to the entrance now.", now=True)
-                if self.current_guest < len(self.guests):
+                if self.current_guest < 2:
                     self.current_guest += 1
                     self.current_state = STATES["GO_TO_ENTRANCE"]
                 else:
+                    self.subtask_manager["hri"].speak("I have finished my task.", now=True)
                     self.current_state = STATES["SHUTDOWN"]
 
             ### Go back to the entrance
