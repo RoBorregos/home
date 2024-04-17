@@ -1,9 +1,0 @@
-#goal definition
-int32 object_id
-string object_name
----
-#result definition
-bool result
----
-#feedback
-string status
