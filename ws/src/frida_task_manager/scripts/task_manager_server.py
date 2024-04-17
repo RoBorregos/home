@@ -19,6 +19,7 @@ from frida_hri_interfaces.msg import ConversateAction, ConversateFeedback, Conve
 from hri_tasks import TasksHRI
 from manipulation_tasks import TasksManipulation
 from nav_tasks import TasksNav
+from vision_tasks import TasksVision
 
 COMMANDS_TOPIC = "/task_manager/commands"
 SPEAK_TOPIC = "/speech/speak"
@@ -111,11 +112,20 @@ class TaskManagerServer:
         rospy.loginfo(f"Executing command: {command.action} -> {command.complement}")
 
         task_result = 0
+
+        area_target = ""
         for area in AREAS:
-            if command.action in TaskManagerServer.COMMANDS_CATEGORY[area] and AREA_ENABLED[area]:
-                task_result = self.subtask_manager[area].execute_command(
-                    command.action, command.complement, self.perceived_information
-                )
+            if command.action in TaskManagerServer.COMMANDS_CATEGORY[area]:
+                area_target = area
+                
+        if area_target == "hri" and AREA_ENABLED[area_target]:
+            task_result = self.subtask_manager[area].execute_command(
+                command.action, command.complement, self.perceived_information
+            )
+
+        if command.action == "interact" or command.action == "ask":
+            
+
 
         if task_result == -1:
             rospy.logerr("Error in task execution")
