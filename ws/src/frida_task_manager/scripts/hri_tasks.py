@@ -16,8 +16,6 @@ from frida_hri_interfaces.srv import Speak
 SPEAK_TOPIC = "/speech/speak"
 CONVERSATION_SERVER = "/conversation_as"
 
-FAKE_TASK = True
-
 class TasksHRI:
     STATE_ENUM = {
         "IDLE": 0,
@@ -30,9 +28,10 @@ class TasksHRI:
 
     AREA_TASKS = ["ask", "interact", "feedback"]
 
-    def __init__(self) -> None:
-        if not FAKE_TASK:
-            self.conversation_client = actionlib.SimpleActionClient(CONVERSATION_SERVER, ConversateAction)
+    def __init__(self, fake = False) -> None:
+        self.FAKE_TASK = fake
+        if not self.FAKE_TASK:
+            # self.conversation_client = actionlib.SimpleActionClient(CONVERSATION_SERVER, ConversateAction)
             #self.pub_speak = rospy.Publisher(SPEAK_TOPIC, String, queue_size=10)
             try:
                 rospy.wait_for_service(SPEAK_TOPIC, timeout=5.0)
@@ -53,7 +52,7 @@ class TasksHRI:
         goal.request = composed_request
         goal.wait = 0 if command == "feedback" else 1
 
-        if not FAKE_TASK:
+        if not self.FAKE_TASK:
             self.conversation_client.send_goal(goal)
             if goal.wait:
                 self.conversation_client.wait_for_result()
@@ -70,7 +69,7 @@ class TasksHRI:
     def speak(self, text: str) -> None:
         """Method to publish directly text to the speech node"""
         #self.pub_speak.publish(text)
-        if not FAKE_TASK:
+        if not self.FAKE_TASK:
             self.speak_client(text)
         else:
             rospy.loginfo(f"[INFO] Speaking: {text}")

@@ -12,12 +12,13 @@ import actionlib
 from std_msgs.msg import String, Int32
 from frida_hri_interfaces.msg import Command, CommandList
 from frida_manipulation_interfaces.msg import manipulationPickAndPlaceAction, manipulationPickAndPlaceGoal, manipulationPickAndPlaceResult, manipulationPickAndPlaceFeedback
+from frida_manipulation_interfaces.msg import MoveJointAction, MoveJointGoal, MoveJointResult, MoveJointFeedback
+from frida_manipulation_interfaces.srv import Gripper
 
 MANIPULATION_SERVER = "/manipulationServer"
+ARM_SERVER = "/arm_as"
 PLACE_TARGET = -5
 POUR_TARGET = -10
-
-FAKE_TASKS = True
 
 class TasksManipulation:
     """Manager for the manipulation area tasks"""
@@ -37,12 +38,25 @@ class TasksManipulation:
         "snacks": 5
     }
 
-    def __init__(self) -> None:
-        if not FAKE_TASKS:
+    def __init__(self, fake = False) -> None:
+        
+        self.FAKE_TASKS = fake
+        if not self.FAKE_TASKS:
             rospy.loginfo("[INFO] Waiting for manipulation server")
             self.manipulation_client = actionlib.SimpleActionClient(MANIPULATION_SERVER, manipulationPickAndPlaceAction)
+            self.move_arm_client = actionlib.SimpleActionClient(ARM_SERVER, MoveJointAction)
+            self.gripper_service = rospy.ServiceProxy('/gripper_service', Gripper)
+            
+            rospy.loginfo("[INFO] Connecting to manipulation_server")
             if not self.manipulation_client.wait_for_server(timeout=rospy.Duration(10.0)):
-                rospy.logerr("Manipulation server not initialized")
+                rospy.logerr("[SUCCESS] Manipulation server not initialized")
+            rospy.loginfo("[INFO] Connecting to arm_server")
+            if not self.move_arm_client.wait_for_server(timeout=rospy.Duration(10.0)):
+                rospy.logerr("[SUCCESS] Arm server not initialized")
+            rospy.loginfo("[INFO] Connecting to gripper_service")
+            if not self.gripper_service.wait_for_service(timeout=rospy.Duration(10.0)):
+                rospy.logerr("[SUCCESS] Gripper service not initialized")
+            
 
         rospy.loginfo("[SUCCESS] Manipulation Task Manager initialized")
 
@@ -55,7 +69,8 @@ class TasksManipulation:
             return self.execute_pick_and_place( command )
         if command in ("give"):
             return self.execute_give()
-
+        if command in ("observe"):
+            return self.execute_observe()
         return -1
 
     def execute_pick(self, target: str) -> int:
@@ -63,7 +78,7 @@ class TasksManipulation:
         if target not in TasksManipulation.OBJECTS_DICT:
             rospy.logerr("Object not found")
             return TasksManipulation.STATE["EXECUTION_ERROR"]
-        if not FAKE_TASKS:
+        if not self.FAKE_TASKS:
             return self.execute_pick_and_place( TasksManipulation.OBJECTS_DICT[target] )
         else:
             return TasksManipulation.STATE["EXECUTION_SUCCESS"]
@@ -77,7 +92,7 @@ class TasksManipulation:
         
         rospy.loginfo(f"[INFO] Manipulation Target: {target}")
         
-        if not FAKE_TASKS:
+        if not self.FAKE_TASKS:
             self.manipulation_client.send_goal(
                         manipulationPickAndPlaceGoal(object_name = target),
                         feedback_cb=manipulation_goal_feedback,
@@ -91,15 +106,39 @@ class TasksManipulation:
     
     def execute_give(self) -> int:
         rospy.loginfo(f"[INFO] Giving")
-        if not FAKE_TASKS:
+        if not self.FAKE_TASKS:
             # execute give
+            rospy.loginfo("[INFO] Giving...")
+            self.move_arm_client.send_goal(
+                MoveJointGoal(predefined_position="give"),
+            )
+            self.move_arm_client.wait_for_result()
+            rospy.sleep(1)
+            rospy.loginfo("[INFO] Opening gripper")
+            self.gripper_service(True)
+            rospy.sleep(3)
+            rospy.loginfo("[INFO] Closing gripper")
+            self.gripper_service(False)
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"]
+        else:
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"]
+    
+    def execute_observe(self) -> int:
+        rospy.loginfo(f"[INFO] Observing")
+        if not self.FAKE_TASKS:
+            # execute observe
+            rospy.loginfo("[INFO] Moving to observe position")
+            self.move_arm_client.send_goal(
+                MoveJointGoal(predefined_position="observe"),
+            )
+            self.move_arm_client.wait_for_result()
             return TasksManipulation.STATE["EXECUTION_SUCCESS"]
         else:
             return TasksManipulation.STATE["EXECUTION_SUCCESS"]
 
     def cancel_command(self) -> None:
         """Method to cancel the current command"""
-        if not FAKE_TASKS:
+        if not self.FAKE_TASKS:
             self.manipulation_client.cancel_all_goals()
             rospy.loginfo("Command canceled Manipulation")
         else:

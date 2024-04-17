@@ -14,8 +14,6 @@ from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from geometry_msgs.msg import Pose, PoseStamped, Point, Quaternion
 from frida_vision_interfaces.msg import DetectPointingObjectAction, DetectPointingObjectGoal, DetectPointingObjectResult, DetectPointingObjectFeedback
 
-FAKE_TASKS = True
-
 POINTING_BAG_SERVER = "/detectPointingObject"
 
 class TasksVision:
@@ -28,8 +26,9 @@ class TasksVision:
 
     AREA_TASKS = ["get_bag"]
 
-    def __init__(self) -> None:
+    def __init__(self, fake = False) -> None:
         
+        self.FAKE_TASKS = fake
         # Context information
         self.bag_information = {
             "id": 0,
@@ -37,7 +36,7 @@ class TasksVision:
             "PoseStamped": PoseStamped()
         }
         
-        if not FAKE_TASKS:
+        if not self.FAKE_TASKS:
             rospy.loginfo("[INFO] Waiting for bag server")
             self.bag_client = actionlib.SimpleActionClient(POINTING_BAG_SERVER, DetectPointingObjectAction)
             if not self.bag_client.wait_for_server(timeout=rospy.Duration(5.0)):
@@ -52,14 +51,15 @@ class TasksVision:
         rospy.loginfo("[INFO] Nav Command")
 
         if command == "get_bag":
+            self.get_bag()
             # set dummy values
-            self.bag_information["id"] = 1
-            self.bag_information["name"] = "bag"
-            # set dummy pose with dummy values
-            self.bag_information["PoseStamped"] = PoseStamped(header="zed2_camera_link", 
-                                                              pose=Pose(position=Point(10,20,30),
-                                                                        orientation=Quaternion(0,0,0,1))
-            )
+            # self.bag_information["id"] = 1
+            # self.bag_information["name"] = "bag"
+            # # set dummy pose with dummy values
+            # self.bag_information["PoseStamped"] = PoseStamped(header="zed2_camera_link", 
+            #                                                   pose=Pose(position=Point(10,20,30),
+            #                                                             orientation=Quaternion(0,0,0,1))
+            # )
 
         return TasksVision.STATE["EXECUTION_ERROR"]
 
@@ -67,7 +67,7 @@ class TasksVision:
         """Method to get the bag"""
         rospy.loginfo("[INFO] Getting the bag")
 
-        if not FAKE_TASKS:
+        if not self.FAKE_TASKS:
             goal = DetectPointingObjectGoal(waiting_time=5)
             self.bag_client.send_goal(goal)
             self.bag_client.wait_for_result()

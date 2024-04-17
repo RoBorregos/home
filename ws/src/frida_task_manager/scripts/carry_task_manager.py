@@ -9,7 +9,7 @@ import rospy
 import actionlib
 
 ### ROS messages
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
 from frida_hri_interfaces.msg import Command, CommandList
 from frida_hri_interfaces.msg import ConversateAction, ConversateFeedback, ConversateGoal, ConversateResult
 
@@ -27,6 +27,11 @@ NAV_ENABLED = True
 MANIPULATION_ENABLED = True
 CONVERSATION_ENABLED = True
 VISION_ENABLED = True
+
+FAKE_NAV = False
+FAKE_MANIPULATION = True
+FAKE_HRI = False
+FAKE_VISION = False
 
 AREAS = ["nav", "manipulation", "hri", "vision"]
 
@@ -66,10 +71,12 @@ class TaskManagerServer:
         "GET_BAG": 0,
         "APPROACH_BAG": 1,
         "PICK_BAG": 2,
-        "FOLLOW_PERSON": 3,
-        "GIVE_BAG": 4,
-        "RETURN": 5,
-        "SHUTDOWN": 6
+        "RETURN_TO_OBSERVE": 4,
+        "START_FOLLOW_PERSON": 5,
+        "FOLLOW_PERSON": 6,
+        "GIVE_BAG": 7,
+        "RETURN": 8,
+        "SHUTDOWN": 9
     }
     
     STATE_ENUM = {
@@ -82,8 +89,8 @@ class TaskManagerServer:
     }
 
     COMMANDS_CATEGORY = {
-        "nav" : ["go", "follow", "stop", "approach", "remember", "go_pose"],
-        "manipulation" : ["pick", "place", "grasp", "give", "open", "close", "pour"],
+        "nav" : ["go", "follow", "stop", "approach", "remember", "go_pose", "stop_follow"],
+        "manipulation" : ["pick", "place", "grasp", "give", "open", "close", "pour", "observe"],
         "hri" : ["ask", "interact", "feedback"],
         "vision" : ["find", "identify", "count", "get_bag"]
     }
@@ -92,19 +99,21 @@ class TaskManagerServer:
         self._node = rospy.init_node("task_manager_server")
         self._rate = rospy.Rate(200)
         # self._sub = rospy.Subscriber(COMMANDS_TOPIC, CommandList, self.commands_callback)
-
+        self.following = False
+        rospy.loginfo("STARTED STOP SUB")
+        self.stop_following_sub = rospy.Subscriber("/stop_following", Bool, self.stop_following_callback)
         # Creates an empty dictionary to store the subtask manager of each area
         self.subtask_manager = dict.fromkeys(AREAS, None)
 
         if CONVERSATION_ENABLED:
-            self.subtask_manager["hri"] = TasksHRI()
+            self.subtask_manager["hri"] = TasksHRI(fake=FAKE_HRI)
             self.subtask_manager["hri"].speak("Hi, my name is Frida. I'm here to help you with your domestic tasks")
         if MANIPULATION_ENABLED:
-            self.subtask_manager["manipulation"] = TasksManipulation()
+            self.subtask_manager["manipulation"] = TasksManipulation(fake=FAKE_MANIPULATION)
         if NAV_ENABLED:
-            self.subtask_manager["nav"] = TasksNav()
+            self.subtask_manager["nav"] = TasksNav(fake=FAKE_NAV)
         if VISION_ENABLED:
-            self.subtask_manager["vision"] = TasksVision()
+            self.subtask_manager["vision"] = TasksVision(fake=FAKE_VISION)
 
         self.current_state = TaskManagerServer.STATE_ENUM["IDLE"]
         self.current_past_state = None
@@ -113,8 +122,9 @@ class TaskManagerServer:
         
         # Context information   
         self.perceived_information = ""
-        self.following_person = False
         self.bag = Bag()
+        
+        self.current_state = TaskManagerServer.TASK_STATES["GET_BAG"]
         
         self.run()
 
@@ -151,50 +161,70 @@ class TaskManagerServer:
                 self.subtask_manager["hri"].speak("Please, point at the bag for 5 seconds")
                 if self.execute_command(Command(action="get_bag", complement="")) == TaskManagerServer.STATE_ENUM["ERROR"]:
                     continue
+                print("got bag")
                 self.subtask_manager["hri"].speak("I got the bag. Thank you!")
                 self.bag.set_bag_info(*self.subtask_manager["vision"].get_bag_information())
                 # remember location to return
+                print("remembering")
                 self.execute_command(Command(action="remember", complement=""))
                 self.current_state = TaskManagerServer.TASK_STATES["APPROACH_BAG"]
             
             if self.current_state == TaskManagerServer.TASK_STATES["APPROACH_BAG"]:
                 rospy.loginfo("[INFO] Approaching bag...")
-                self.subtask_manager["hri"].speak("I'm going to approach the bag")
+                self.subtask_manager["hri"].speak(F"I'm going to approach the {self.bag.name} bag")
                 # transform bag
                 pose = self.bag.PoseStamped
                 print(pose)
                 # apply offset to x
-                pose.pose.position.x -= 0.3
-                # go to map pose
-                self.subtask_manager["nav"].go_pose(pose)
+                self.subtask_manager["nav"].approach_pose(pose)
                 self.current_state = TaskManagerServer.TASK_STATES["PICK_BAG"]
+                break
             
             if self.current_state == TaskManagerServer.TASK_STATES["PICK_BAG"]:
                 rospy.loginfo("[INFO] Picking bag...")
-                self.subtask_manager["hri"].speak("I'm going to pick the bag")
+                self.subtask_manager["hri"].speak("I will pick the bag now")
                 
                 pick_errors = 0
                 if self.execute_command(Command(action="pick", complement="bag")) == TaskManagerServer.STATE_ENUM["ERROR"] and pick_errors < 3:
                     pick_errors += 1
                     continue
+                
+                self.execute_command(Command(action="observe", complement=""))
+                self.current_state = TaskManagerServer.TASK_STATES["RETURN_TO_OBSERVE"]
+                
+            if self.current_state == TaskManagerServer.TASK_STATES["RETURN_TO_OBSERVE"]:
+                rospy.loginfo("[INFO] Returning to observe position...")
+                self.subtask_manager["hri"].speak("I'm returning to the observe position")
+                self.execute_command(Command(action="go", complement="back location"))
+                self.current_state = TaskManagerServer.TASK_STATES["START_FOLLOW_PERSON"]
+            
+            if self.current_state == TaskManagerServer.TASK_STATES["START_FOLLOW_PERSON"]:
+                rospy.loginfo("[INFO] Following person...")
+                self.subtask_manager["hri"].speak("I'm going to follow you now")
+                self.following = True
+                self.execute_command(Command(action="follow", complement=""))
                 self.current_state = TaskManagerServer.TASK_STATES["FOLLOW_PERSON"]
             
             if self.current_state == TaskManagerServer.TASK_STATES["FOLLOW_PERSON"]:
-                rospy.loginfo("[INFO] Following person...")
-                self.subtask_manager["hri"].speak("I'm going to follow you")
-                self.current_state = self.execute_command(Command(action="follow", complement=""))
-                self.current_state = TaskManagerServer.TASK_STATES["GIVE_BAG"]
-            
+                if self.following:
+                    rospy.sleep(0.5)
+                    rospy.loginfo("[INFO] Following person")
+                else:
+                    rospy.loginfo("[INFO] Stopped following person")
+                    # command
+                    self.execute_command(Command(action="stop_follow", complement=""))
+                    self.current_state = TaskManagerServer.TASK_STATES["GIVE_BAG"]
+                
             if self.current_state == TaskManagerServer.TASK_STATES["GIVE_BAG"]:
                 rospy.loginfo("[INFO] Giving bag...")
                 self.subtask_manager["hri"].speak("Please, take the bag from my gripper")
-                self.current_state = self.execute_command(Command(action="give", complement=""))
+                self.execute_command(Command(action="give", complement=""))
                 self.current_state = TaskManagerServer.TASK_STATES["RETURN"]
             
             if self.current_state == TaskManagerServer.TASK_STATES["RETURN"]:
                 rospy.loginfo("[INFO] Returning to initial position...")
                 self.subtask_manager["hri"].speak("I'm going to return to my initial position")
-                self.current_state = self.execute_command(Command(action="go", complement="past location"))
+                self.execute_command(Command(action="go", complement="past location"))
                 self.current_state = TaskManagerServer.TASK_STATES["SHUTDOWN"]
             
             if self.current_state == TaskManagerServer.TASK_STATES["SHUTDOWN"]:
@@ -204,6 +234,10 @@ class TaskManagerServer:
             self._rate.sleep()
         rospy.loginfo("[SUCCESS] Task Finished")
 
+    def stop_following_callback(self, msg: Bool) -> None:
+        """Callback to stop following the person"""
+        rospy.loginfo(f"[INFO] Received stop signal: {msg.data}")
+        self.following = not msg.data
 
 if __name__ == "__main__":
     try:
