@@ -15,6 +15,7 @@ from tf2_geometry_msgs import PoseStamped, PointStamped
 from geometry_msgs.msg import Pose
 from frida_navigation_interfaces.msg import navServAction, navServFeedback, navServGoal, navServResult
 from frida_navigation_interfaces.srv import CreateGoal, CreateGoalRequest, CreateGoalResponse
+from frida_navigation_interfaces.msg import moveActionAction, moveActionGoal, moveActionResult, moveActionFeedback
 from std_srvs.srv import SetBool
 import math
 
@@ -24,6 +25,7 @@ import tf.transformations as transformations
 NAV_SERVER = "/navServer"
 MOVE_BASE_SERVER = "/move_base"
 LOCATION_TOPIC = "/robot_pose"
+APPROACH_SERVER = "/moveServer"
 
 class TasksNav:
     """Class to manage the navigation tasks"""
@@ -42,6 +44,7 @@ class TasksNav:
             self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
             #self.nav_client = actionlib.SimpleActionClient(NAV_SERVER, navServAction)
             self.move_base_client = actionlib.SimpleActionClient(MOVE_BASE_SERVER, MoveBaseAction)
+            self.approach_client = actionlib.SimpleActionClient(APPROACH_SERVER, moveActionAction)
             # self.map_pose_transformer = rospy.ServiceProxy("/create_goal", CreateGoal)
             self.follow_person_toggle = rospy.ServiceProxy("/change_follow_person_state", SetBool)
             self.test_pose_pub = rospy.Publisher("/nav_test_pose_task_manager", PoseStamped, queue_size=1)
@@ -52,9 +55,12 @@ class TasksNav:
             rospy.loginfo("[INFO] Waiting for move base server")
             if not self.move_base_client.wait_for_server(timeout=rospy.Duration(5.0)):
                 rospy.logerr("[INFO] Move Base server not initialized")
-            rospy.loginfo("[INFO] Waiting for map pose transformer")
+            # rospy.loginfo("[INFO] Waiting for map pose transformer")
             # if not self.map_pose_transformer.wait_for_service(timeout=rospy.Duration(5.0)):
             #     rospy.logerr("[INFO] Map pose transformer not initialized")
+            rospy.loginfo("[INFO] Waiting for approach person service")
+            if not self.approach_client.wait_for_server(timeout=rospy.Duration(5.0)):
+                rospy.logerr("[INFO] Approach person server not initialized")
         else:
             rospy.loginfo("[INFO] Fake Nav Task Manager initialized")
         
@@ -95,11 +101,12 @@ class TasksNav:
                 return TasksNav.STATE["EXECUTION_SUCCESS"]
             elif target == "back location":
                 rospy.loginfo("[INFO] Going back to back location")
-                goal_pose = PoseStamped()
-                goal_pose.header.frame_id = "base_footprint"
-                goal_pose = self.map_pose_transformer(goal_pose, -0.5, 0.0)
-                print(f"Going to goal pose: {goal_pose}")
-                self.go_pose(goal_pose)
+                approach_goal = moveActionGoal()
+                approach_goal.goal_type = moveActionGoal.BACKWARD
+                self.approach_client.send_goal(approach_goal)
+                self.approach_client.wait_for_result()
+                rospy.loginfo("[SUCCESS] Arrived at back location")
+                return TasksNav.STATE["EXECUTION_SUCCESS"]
                 
             # Move to room location
             try:
@@ -163,7 +170,12 @@ class TasksNav:
             
             rospy.loginfo("[INFO] Approaching pose")
             
+            approach_goal = moveActionGoal()
+            approach_goal.goal_type = moveActionGoal.FORWARD
+            self.approach_client.send_goal(approach_goal)
+            self.approach_client.wait_for_result()
             
+            rospy.loginfo("[SUCCESS] Arrived at pose")
             
             return TasksNav.STATE["EXECUTION_SUCCESS"]
         else:

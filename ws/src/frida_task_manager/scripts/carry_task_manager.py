@@ -22,6 +22,7 @@ from vision_tasks import TasksVision
 COMMANDS_TOPIC = "/task_manager/commands"
 SPEAK_TOPIC = "/speech/speak"
 CONVERSATION_SERVER = "/conversation_as"
+MOVE_BASE_SERVER = "/moveServer"
 
 NAV_ENABLED = True
 MANIPULATION_ENABLED = True
@@ -29,7 +30,7 @@ CONVERSATION_ENABLED = True
 VISION_ENABLED = True
 
 FAKE_NAV = False
-FAKE_MANIPULATION = True
+FAKE_MANIPULATION = False
 FAKE_HRI = False
 FAKE_VISION = False
 
@@ -157,6 +158,8 @@ class TaskManagerServer:
         """Main loop for the task manager"""
         while not rospy.is_shutdown():
             if self.current_state == TaskManagerServer.TASK_STATES["GET_BAG"]:
+                rospy.loginfo("[INFO] Setting arm to observe")
+                self.subtask_manager["manipulation"].go_to_joint_position("OBSERVE_JOINT_POSITION")
                 rospy.loginfo("[INFO] Getting bag pointed at...")
                 self.subtask_manager["hri"].speak("Please, point at the bag for 5 seconds")
                 if self.execute_command(Command(action="get_bag", complement="")) == TaskManagerServer.STATE_ENUM["ERROR"]:
@@ -172,25 +175,28 @@ class TaskManagerServer:
             if self.current_state == TaskManagerServer.TASK_STATES["APPROACH_BAG"]:
                 rospy.loginfo("[INFO] Approaching bag...")
                 self.subtask_manager["hri"].speak(F"I'm going to approach the {self.bag.name} bag")
-                # transform bag
+                
                 pose = self.bag.PoseStamped
-                print(pose)
-                # apply offset to x
+                rospy.loginfo("[INFO] Setting arm to nav")
+                self.subtask_manager["manipulation"].go_to_joint_position("NAV_JOINT_POSITION")
+                
                 self.subtask_manager["nav"].approach_pose(pose)
                 self.current_state = TaskManagerServer.TASK_STATES["PICK_BAG"]
-                break
+                
             
             if self.current_state == TaskManagerServer.TASK_STATES["PICK_BAG"]:
                 rospy.loginfo("[INFO] Picking bag...")
                 self.subtask_manager["hri"].speak("I will pick the bag now")
-                
+                rospy.loginfo("[INFO] Setting arm to pick")
+                self.subtask_manager["manipulation"].go_to_joint_position("PICK_JOINT_POSITION")
                 pick_errors = 0
-                if self.execute_command(Command(action="pick", complement="bag")) == TaskManagerServer.STATE_ENUM["ERROR"] and pick_errors < 3:
+                if self.execute_command(Command(action="pick", complement=self.bag.name)) == TaskManagerServer.STATE_ENUM["ERROR"] and pick_errors < 3:
                     pick_errors += 1
                     continue
                 
-                self.execute_command(Command(action="observe", complement=""))
+                self.subtask_manager["manipulation"].go_to_joint_position("OBSERVE_JOINT_POSITION")
                 self.current_state = TaskManagerServer.TASK_STATES["RETURN_TO_OBSERVE"]
+                break
                 
             if self.current_state == TaskManagerServer.TASK_STATES["RETURN_TO_OBSERVE"]:
                 rospy.loginfo("[INFO] Returning to observe position...")

@@ -8,17 +8,35 @@ This script manages the implementation of each of the manipulation tasks
 import rospy
 import actionlib
 
+import moveit_commander
+from sensor_msgs.msg import JointState
+
+
 ### ROS messages
 from std_msgs.msg import String, Int32
+from std_srvs.srv import SetBool
 from frida_hri_interfaces.msg import Command, CommandList
 from frida_manipulation_interfaces.msg import manipulationPickAndPlaceAction, manipulationPickAndPlaceGoal, manipulationPickAndPlaceResult, manipulationPickAndPlaceFeedback
 from frida_manipulation_interfaces.msg import MoveJointAction, MoveJointGoal, MoveJointResult, MoveJointFeedback
 from frida_manipulation_interfaces.srv import Gripper
 
 MANIPULATION_SERVER = "/manipulationServer"
-ARM_SERVER = "/arm_as"
+ARM_SERVER = "/arm_joints_as"
 PLACE_TARGET = -5
 POUR_TARGET = -10
+
+
+# joints are -90, -70, -65, 0, 15, 45 in radians
+OBSERVE_JOINT_POSITION = [-1.57, -1.22, -1.13, 0.0, 0.26, 0.78]
+PICK_JOINT_POSITION = [-1.5707963705062866, -1.2217304706573486, -1.1344640254974365, 0.0, 0.7853981852531433, 0.7853981852531433]
+NAV_JOINT_POSITION = PICK_JOINT_POSITION
+
+# Positions
+MANIPULATION_POSITIONS = {
+    "NAV_JOINT_POSITION": NAV_JOINT_POSITION,
+    "OBSERVE_JOINT_POSITION": OBSERVE_JOINT_POSITION,
+    "PICK_JOINT_POSITION": PICK_JOINT_POSITION
+}
 
 class TasksManipulation:
     """Manager for the manipulation area tasks"""
@@ -48,14 +66,21 @@ class TasksManipulation:
             self.gripper_service = rospy.ServiceProxy('/gripper_service', Gripper)
             
             rospy.loginfo("[INFO] Connecting to manipulation_server")
-            if not self.manipulation_client.wait_for_server(timeout=rospy.Duration(10.0)):
-                rospy.logerr("[SUCCESS] Manipulation server not initialized")
+            # if not self.manipulation_client.wait_for_server(timeout=rospy.Duration(10.0)):
+            #     rospy.logerr("[SUCCESS] Manipulation server not initialized")
+            # rospy.loginfo("[INFO] Connecting to arm group")
+            # self.arm_group = moveit_commander.MoveGroupCommander("arm", wait_for_servers = 0)
+            # self.toggle_octomap = rospy.ServiceProxy('/toggle_octomap', SetBool)
+            
             rospy.loginfo("[INFO] Connecting to arm_server")
             if not self.move_arm_client.wait_for_server(timeout=rospy.Duration(10.0)):
                 rospy.logerr("[SUCCESS] Arm server not initialized")
             rospy.loginfo("[INFO] Connecting to gripper_service")
             if not self.gripper_service.wait_for_service(timeout=rospy.Duration(10.0)):
                 rospy.logerr("[SUCCESS] Gripper service not initialized")
+                
+            self.OBSERVER = [-1.5700864791870117, -1.1652400493621826, -1.4244275093078613, -6.2831220626831055, 0.3724396228790283, -5.487866401672363, 0.0] ## TO RADIANDS USING PI
+            self.NAV_ARM = [-1.5701032876968384, -1.1651480197906494, -1.424232840538025, -6.283036231994629, 0.9078435301780701, -5.487793445587158, 0.0]
             
 
         rospy.loginfo("[SUCCESS] Manipulation Task Manager initialized")
@@ -64,7 +89,7 @@ class TasksManipulation:
         """Method to execute each command"""
         rospy.loginfo("[INFO] Manipulation Command")
         if command == "pick":
-            return self.execute_pick_and_place( target )
+            return self.execute_pick( target )
         if command in ("place", "pour"):
             return self.execute_pick_and_place( command )
         if command in ("give"):
@@ -75,11 +100,14 @@ class TasksManipulation:
 
     def execute_pick(self, target: str) -> int:
         """Method to execute the pick action"""
-        if target not in TasksManipulation.OBJECTS_DICT:
-            rospy.logerr("Object not found")
-            return TasksManipulation.STATE["EXECUTION_ERROR"]
+        rospy.loginfo(f"[INFO] Picking {target}")
         if not self.FAKE_TASKS:
-            return self.execute_pick_and_place( TasksManipulation.OBJECTS_DICT[target] )
+            self.manipulation_client.send_goal(
+                        manipulationPickAndPlaceGoal(object_name = target),
+                )
+            self.manipulation_client.wait_for_result()
+            result = self.manipulation_client.get_result()
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"] if result.result else TasksManipulation.STATE["EXECUTION_ERROR"]
         else:
             return TasksManipulation.STATE["EXECUTION_SUCCESS"]
 
@@ -143,6 +171,39 @@ class TasksManipulation:
             rospy.loginfo("Command canceled Manipulation")
         else:
             rospy.loginfo("Command canceled Manipulation")
+            
+    def go_to_joint_position(self, position: str) -> int:
+        """Method to move the arm to a predefined joint position"""
+        if not self.FAKE_TASKS:
+            joints_target = MANIPULATION_POSITIONS[position]
+            self.move_arm_client.send_goal(
+                MoveJointGoal(joints_target = joints_target)
+            )
+            self.move_arm_client.wait_for_result()
+            # self.moveARM(joints_target, 0.2)
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"]
+        else:
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"]
+
+    def moveARM(self, joints, speed, enable_octomap = True):
+        if enable_octomap:
+            rospy.loginfo("[WARNING] MOVING ARM WITH OCTOMAP DISABLED")
+            self.toggle_octomap(False)
+        ARM_JOINTS = rospy.get_param("ARM_JOINTS", ["arm_1_joint", "arm_2_joint", "arm_3_joint", "arm_4_joint", "arm_5_joint", "arm_6_joint", "arm_7_joint"])
+        joint_state = JointState()
+        joint_state.name = ARM_JOINTS
+        joint_state.position = joints
+        # set speed
+        self.arm_group.set_max_velocity_scaling_factor(speed)
+        # set RRTConnect and timeout
+        self.arm_group.set_planner_id("RRTConnect")
+        self.arm_group.set_planning_time(20)
+        # planning attempts
+        self.arm_group.set_num_planning_attempts(10)
+        self.arm_group.go(joint_state, wait=True)
+        self.arm_group.stop()
+        if enable_octomap:
+            self.toggle_octomap(True)
 
 if __name__ == "__main__":
     try:

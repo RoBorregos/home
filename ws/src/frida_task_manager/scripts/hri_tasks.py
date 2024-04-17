@@ -33,10 +33,8 @@ class TasksHRI:
         if not self.FAKE_TASK:
             # self.conversation_client = actionlib.SimpleActionClient(CONVERSATION_SERVER, ConversateAction)
             #self.pub_speak = rospy.Publisher(SPEAK_TOPIC, String, queue_size=10)
-            try:
-                rospy.wait_for_service(SPEAK_TOPIC, timeout=5.0)
-            except rospy.ROSException:
-                rospy.logerr("Conversation service not available")
+            rospy.loginfo("[INFO] Waiting for conversation server")
+            rospy.wait_for_service(SPEAK_TOPIC, timeout=10.0)
             self.speak_client = rospy.ServiceProxy(SPEAK_TOPIC, Speak)
         else:
             rospy.loginfo("[INFO] Fake HRI Task Manager initialized")
