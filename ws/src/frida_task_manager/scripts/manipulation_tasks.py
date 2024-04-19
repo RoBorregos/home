@@ -27,15 +27,22 @@ POUR_TARGET = -10
 
 
 # joints are -90, -70, -65, 0, 15, 45 in radians
-OBSERVE_JOINT_POSITION = [-1.57, -1.22, -1.13, 0.0, 0.26, 0.78]
-PICK_JOINT_POSITION = [-1.5707963705062866, -1.2217304706573486, -1.1344640254974365, 0.0, 0.7853981852531433, 0.7853981852531433]
-NAV_JOINT_POSITION = PICK_JOINT_POSITION
+OBSERVE_JOINT_POSITION = [-1.57, -1.22, -1.13, 0.0, 0.12, 0.78]
+# PICK IS -90, -50, -105, -180, -60, 225
+PICK_JOINT_POSITION = [-1.5707963705062866, -0.6108652353286743, -1.5707963705062866, 3.1415927410125732, -0.6108652353286743, -2.356194496154785]
+RECEIVE_JOINT_POSITION = [-1.5707963705062866, -1.2217304706573486, -1.1344640254974365, 0.0, 0.7853981852531433, -0.78]
+NAV_JOINT_POSITION = [-1.5707963705062866, -1.22173, -0.95993, 3.1415927410125732, -0.6108652353286743, -2.356194496154785]
+# Carrying angles -90, -70, -65, 0, 100, -135
+CARRYING_JOINT_POSITION = [-1.5707963705062866, -1.2217304706573486, -1.1344640254974365, 0.0, 1.745329260482788, -2.356194496154785]
 
 # Positions
 MANIPULATION_POSITIONS = {
     "NAV_JOINT_POSITION": NAV_JOINT_POSITION,
     "OBSERVE_JOINT_POSITION": OBSERVE_JOINT_POSITION,
-    "PICK_JOINT_POSITION": PICK_JOINT_POSITION
+    "PICK_JOINT_POSITION": PICK_JOINT_POSITION,
+    "RECEIVE_JOINT_POSITION": RECEIVE_JOINT_POSITION,
+    "CARRYING_JOINT_POSITION": CARRYING_JOINT_POSITION
+    
 }
 
 class TasksManipulation:
@@ -137,10 +144,7 @@ class TasksManipulation:
         if not self.FAKE_TASKS:
             # execute give
             rospy.loginfo("[INFO] Giving...")
-            self.move_arm_client.send_goal(
-                MoveJointGoal(predefined_position="give"),
-            )
-            self.move_arm_client.wait_for_result()
+            self.go_to_joint_position("RECEIVE_JOINT_POSITION")
             rospy.sleep(1)
             rospy.loginfo("[INFO] Opening gripper")
             self.gripper_service(True)
@@ -204,6 +208,22 @@ class TasksManipulation:
         self.arm_group.stop()
         if enable_octomap:
             self.toggle_octomap(True)
+    
+    def open_gripper(self) -> int:
+        """Method to open the gripper"""
+        if not self.FAKE_TASKS:
+            self.gripper_service("open")
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"]
+        else:
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"]
+    
+    def close_gripper(self) -> int:
+        """Method to close the gripper"""
+        if not self.FAKE_TASKS:
+            self.gripper_service("close")
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"]
+        else:
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"]
 
 if __name__ == "__main__":
     try:

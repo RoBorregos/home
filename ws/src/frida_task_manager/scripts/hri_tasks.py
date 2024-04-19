@@ -12,6 +12,7 @@ import actionlib
 from std_msgs.msg import String
 from frida_hri_interfaces.msg import ConversateAction, ConversateFeedback, ConversateGoal, ConversateResult
 from frida_hri_interfaces.srv import Speak
+from frida_hri_interfaces.srv import ItemsCategory
 
 SPEAK_TOPIC = "/speech/speak"
 CONVERSATION_SERVER = "/conversation_as"
@@ -36,6 +37,10 @@ class TasksHRI:
             rospy.loginfo("[INFO] Waiting for conversation server")
             rospy.wait_for_service(SPEAK_TOPIC, timeout=10.0)
             self.speak_client = rospy.ServiceProxy(SPEAK_TOPIC, Speak)
+            rospy.loginfo("[SUCCESS] Conversation server initialized")
+            rospy.loginfo("[INFO] Waiting for items category server")
+            rospy.wait_for_service("/items_category")
+            self.category_client = rospy.ServiceProxy("/items_category", ItemsCategory)
         else:
             rospy.loginfo("[INFO] Fake HRI Task Manager initialized")
 
@@ -68,9 +73,17 @@ class TasksHRI:
         """Method to publish directly text to the speech node"""
         #self.pub_speak.publish(text)
         if not self.FAKE_TASK:
-            self.speak_client(text)
+            pass
+            #self.speak_client(text)
         else:
             rospy.loginfo(f"[INFO] Speaking: {text}")
+    
+    def get_objects_category(self, object_names) -> str:
+        """Method to get the category of a list of object names"""
+        if self.FAKE_TASK:
+            return "sample_category2"
+        response = self.category_client(items=object_names)
+        return response.category
 
 if __name__ == "__main__":
     try:

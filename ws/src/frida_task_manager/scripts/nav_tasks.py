@@ -105,6 +105,7 @@ class TasksNav:
                 approach_goal.goal_type = moveActionGoal.BACKWARD
                 self.approach_client.send_goal(approach_goal)
                 self.approach_client.wait_for_result()
+                #self.go_place("past location")
                 rospy.loginfo("[SUCCESS] Arrived at back location")
                 return TasksNav.STATE["EXECUTION_SUCCESS"]
                 
@@ -156,7 +157,7 @@ class TasksNav:
             transformed_target.pose.position.x = 0
             transformed_target.pose.position.y = 0
             transformed_target.pose.position.z = 0
-            quaternion = transformations.quaternion_from_euler(0, 0, angle)
+            quaternion = transformations.quaternion_from_euler(0, 0, angle*0.8)
             transformed_target.pose.orientation.x = quaternion[0]
             transformed_target.pose.orientation.y = quaternion[1]
             transformed_target.pose.orientation.z = quaternion[2]
@@ -173,7 +174,7 @@ class TasksNav:
             approach_goal = moveActionGoal()
             approach_goal.goal_type = moveActionGoal.FORWARD
             self.approach_client.send_goal(approach_goal)
-            self.approach_client.wait_for_result()
+            self.approach_client.wait_for_result(rospy.Duration.from_sec(20.0))
             
             rospy.loginfo("[SUCCESS] Arrived at pose")
             
