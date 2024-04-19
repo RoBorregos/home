@@ -115,7 +115,7 @@ class ReceptionistTaskManager:
         self.current_guest = 1
 
         self.guests = [
-            Guest(0, "Adan", "water", "Is wearing glasses, has dark brown hair, and is wearing a blue t-shirt and shorts."),
+            Guest(0, "Adan", "water", "Has dark brown hair, and is wearing a blue t-shirt and shorts."),
             Guest(1),
             Guest(2),
         ]
