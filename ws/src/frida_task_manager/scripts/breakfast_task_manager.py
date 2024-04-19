@@ -64,7 +64,7 @@ class TaskManagerServer:
 
         if CONVERSATION_ENABLED:
             self.subtask_manager["hri"] = TasksHRI()
-            self.subtask_manager["hri"].speak("Hi, my name is Frida. I'm here to help you with your domestic tasks")
+            self.subtask_manager["hri"].speak("Hi, my name is Frida. I'll serve your breakfast today.")
         if MANIPULATION_ENABLED:
             self.subtask_manager["manipulation"] = TasksManipulation()
         if NAV_ENABLED:
@@ -79,20 +79,20 @@ class TaskManagerServer:
         self.perceived_information = ""
 
         self.current_queue = [
-            Command(action="remember", complement="location"),
+            Command(action="go", complement="kitchen table_pick"),
             Command(action="pick", complement="bowl"),
-            Command(action="go", complement="home table"),
+            Command(action="go", complement="kitchen table"),
             Command(action="place", complement="bowl"),
-            Command(action="go", complement="past location"),
+            Command(action="go", complement="kitchen table_pick"),
             Command(action="pick", complement="zucaritas"),
-            Command(action="go", complement="home table"),
+            Command(action="go", complement="kitchen table"),
             Command(action="pour", complement="zucaritas"),
             Command(action="place", complement="zucaritas"),
-            Command(action="go", complement="past location"),
-            Command(action="pick", complement="cocacola"),
-            Command(action="go", complement="home table"),
-            Command(action="pour", complement="cocacola"),
-            Command(action="place", complement="cocacola")
+            Command(action="go", complement="kitchen table_pick"),
+            Command(action="pick", complement="leche"),
+            Command(action="go", complement="kitchen table"),
+            Command(action="pour", complement="leche"),
+            Command(action="place", complement="leche")
         ]
 
         self.run()
@@ -125,7 +125,8 @@ class TaskManagerServer:
 
         rospy.loginfo(f"Executing command: {command.action} -> {command.complement}")
         if command.action != "remember":
-            self.subtask_manager["hri"].speak(f"I'll {command.action} {command.complement}", now=True)
+            command_clean = command.complement.replace("_", " ")
+            self.subtask_manager["hri"].speak(f"I'll {command.action} {command_clean}", now=True)
 
         task_result = 0
         for area in AREAS:
