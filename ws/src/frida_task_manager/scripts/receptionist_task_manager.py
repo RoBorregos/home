@@ -219,6 +219,7 @@ class ReceptionistTaskManager:
                 self.subtask_manager["hri"].speak("The host is already waiting for you there. Please stay behind me until I find your seat.", now=False)
                 self.subtask_manager["manipulation"].move_arm_joints(0, 0, "face_detection")
                 #TODO: Face to front default arm position with arm server
+
                 #self.subtask_manager["nav"].execute_command("go", "living_room", "")
                 if self.current_guest == 1:
                     self.current_state = STATES["INTRODUCE_GUEST_1"]
@@ -278,7 +279,8 @@ class ReceptionistTaskManager:
                     time.sleep(1)
                     timeout_face += 1
                     rospy.loginfo("Expecting guest face")
-                self.subtask_manager["hri"].speak("I'll find you a free seat, please wait.", now=False)
+                self.subtask_manager["hri"].speak(f"I'll find you a free seat {self.guests[self.current_guest].name}, please wait.", now=True)
+
                 self.subtask_manager["manipulation"].move_arm_joints(0, 0, "seat")
                 self.current_state = STATES["FIND_FREE_SEAT"]
 
@@ -306,10 +308,11 @@ class ReceptionistTaskManager:
                     rospy.loginfo("Expecting guest face")
 
                 self.subtask_manager["hri"].speak("I've detected you took your seat. I'll go back to the entrance now.", now=True)
-                if self.current_guest < len(self.guests):
+                if self.current_guest < 2:
                     self.current_guest += 1
                     self.current_state = STATES["GO_TO_ENTRANCE"]
                 else:
+                    self.subtask_manager["hri"].speak("I have finished my task.", now=True)
                     self.current_state = STATES["SHUTDOWN"]
 
             ### Go back to the entrance
