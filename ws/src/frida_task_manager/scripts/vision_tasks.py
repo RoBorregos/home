@@ -70,6 +70,8 @@ class TasksVision:
             rospy.wait_for_service(FIND_TOPIC, timeout=5.0)
             find_seat = rospy.ServiceProxy(FIND_TOPIC, FindSeat)
             response = find_seat(True)
+            if int(response.angle) == -100:
+                return 300
             return int(response.angle)
         except rospy.ServiceException:
             rospy.logerr("Service call find_seat failed")
