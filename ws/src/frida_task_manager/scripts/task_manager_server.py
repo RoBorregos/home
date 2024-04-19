@@ -65,15 +65,15 @@ class TaskManagerServer:
         # Creates an empty dictionary to store the subtask manager of each area
         self.subtask_manager = dict.fromkeys(AREAS, None)
 
-        if CONVERSATION_ENABLED:
-            self.subtask_manager["hri"] = TasksHRI()
-            self.subtask_manager["hri"].speak("Hi, my name is Frida. I'm here to help you with your domestic tasks")
         if MANIPULATION_ENABLED:
             self.subtask_manager["manipulation"] = TasksManipulation()
         if NAV_ENABLED:
             self.subtask_manager["nav"] = TasksNav()
-        #if VISION_ENABLED:
-            #self.subtask_manager["vision"] = TasksVision()
+        if VISION_ENABLED:
+            self.subtask_manager["vision"] = TasksVision()
+        if CONVERSATION_ENABLED:
+            self.subtask_manager["hri"] = TasksHRI()
+            self.subtask_manager["hri"].speak("Hi, my name is Frida. I'm here to help you with your domestic tasks")
 
         self.current_state = TaskManagerServer.STATE_ENUM["IDLE"]
         self.current_past_state = None
@@ -109,7 +109,7 @@ class TaskManagerServer:
     def execute_command(self, command: Command) -> int:
         """Method for executing a single command inside its area submodule"""
 
-        rospy.loginfo(f"Executing command: {command.action} -> {command.complement}")
+        rospy.loginfo(f"Executing command: {command.action} -> {command.complement} : {command.characteristic}")
 
         task_result = 0
 
@@ -123,8 +123,16 @@ class TaskManagerServer:
                 command.action, command.complement, self.perceived_information
             )
 
+        
+
         if command.action == "interact" or command.action == "ask":
-            
+            task_result = self.subtask_manager["hri"].execute_command(
+                command.action, command.complement, self.perceived_information
+            )
+        elif command.action == "go":
+            task_result = self.subtask_manager["nav"].execute_command(
+                command.action, command.complement, self.perceived_information
+            )
 
 
         if task_result == -1:
