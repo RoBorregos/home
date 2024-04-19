@@ -1,0 +1,24 @@
+version: '2.25'
+services:
+  main:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.main
+    volumes:
+      - ws:/workspace
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /dev:/dev
+    network-mode: host
+    
+    privileged: true
+    devices:
+      - /dev/video0:/dev/video0
+    environment:
+      - ROS_MASTER_URI=http://192.168.31.23:11311
+      - ROS_IP=192.168.31.97
+      - DISPLAY=${DISPLAY}
+      - LOCAL_USER_ID=id -u ${USER}
+      - LOCAL_GROUP_ID=id -g ${USER}
+      - LOCAL_GROUP_NAME=id -gn ${USER}
+    command: bash -c "source /ws/devel/setup.bash && rosrun frida_task_manager receptionist_task_manager.py"
