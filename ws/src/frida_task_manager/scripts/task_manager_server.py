@@ -129,8 +129,11 @@ class TaskManagerServer:
             )
 
         elif command.action == "go":
-            if self.subtask_manager["nav"].go_place(command.complement) == STATES["EXECUTION_FAILED"]:
+            if self.subtask_manager["nav"].go_place(command.complement) == STATES["EXECUTION_SUCCESS"]:
                 self.subtask_manager["hri"].speak("I couldn't reach the goal")
+
+        elif command.action in ("pick", "place", "pour"):
+            #if self.subtask_manager[
         
 
 
