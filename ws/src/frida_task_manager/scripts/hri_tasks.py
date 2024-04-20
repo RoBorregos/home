@@ -37,10 +37,10 @@ class TasksHRI:
             rospy.loginfo("[INFO] Waiting for conversation server")
             rospy.wait_for_service(SPEAK_TOPIC, timeout=10.0)
             self.speak_client = rospy.ServiceProxy(SPEAK_TOPIC, Speak)
-            rospy.loginfo("[SUCCESS] Conversation server initialized")
-            rospy.loginfo("[INFO] Waiting for items category server")
-            rospy.wait_for_service("/items_category")
-            self.category_client = rospy.ServiceProxy("/items_category", ItemsCategory)
+            # rospy.loginfo("[SUCCESS] Conversation server initialized")
+            # rospy.loginfo("[INFO] Waiting for items category server")
+            # rospy.wait_for_service("/items_category")
+            # self.category_client = rospy.ServiceProxy("/items_category", ItemsCategory)
         else:
             rospy.loginfo("[INFO] Fake HRI Task Manager initialized")
 
@@ -74,7 +74,7 @@ class TasksHRI:
         #self.pub_speak.publish(text)
         if not self.FAKE_TASK:
             pass
-            #self.speak_client(text)
+            self.speak_client(text)
         else:
             rospy.loginfo(f"[INFO] Speaking: {text}")
     

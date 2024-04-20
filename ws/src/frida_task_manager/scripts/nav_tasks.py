@@ -58,9 +58,9 @@ class TasksNav:
             # rospy.loginfo("[INFO] Waiting for map pose transformer")
             # if not self.map_pose_transformer.wait_for_service(timeout=rospy.Duration(5.0)):
             #     rospy.logerr("[INFO] Map pose transformer not initialized")
-            rospy.loginfo("[INFO] Waiting for approach person service")
-            if not self.approach_client.wait_for_server(timeout=rospy.Duration(5.0)):
-                rospy.logerr("[INFO] Approach person server not initialized")
+                # rospy.loginfo("[INFO] Waiting for approach person service")
+                # if not self.approach_client.wait_for_server(timeout=rospy.Duration(5.0)):
+                #     rospy.logerr("[INFO] Approach person server not initialized")
         else:
             rospy.loginfo("[INFO] Fake Nav Task Manager initialized")
         
@@ -230,6 +230,12 @@ class TasksNav:
         if not self.FAKE_TASKS:
             self.move_base_client.cancel_all_goals()
         rospy.loginfo("[INFO] Command canceled Nav")
+    
+    def cancel_goals(self) -> None:
+        """Method to cancel all goals"""
+        if not self.FAKE_TASKS:
+            self.move_base_client.cancel_all_goals()
+        rospy.loginfo("[INFO] Goals canceled Nav")
 
 if __name__ == "__main__":
     try:

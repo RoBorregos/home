@@ -15,7 +15,7 @@ from geometry_msgs.msg import Pose, PoseStamped, Point, Quaternion
 from frida_vision_interfaces.msg import DetectPointingObjectAction, DetectPointingObjectGoal, DetectPointingObjectResult, DetectPointingObjectFeedback
 from frida_manipulation_interfaces.msg import objectDetectionArray, objectDetection
 from frida_vision_interfaces.srv import Pointing
-from frida_vision_interfaces.srv import ShelfDetection
+#from frida_vision_interfaces.srv import ShelfDetection
 
 import math
 
@@ -23,7 +23,7 @@ DIRECTION_BAG_SERVER = "/get_bag_direction"
 POINTING_BAG_SERVER = "/detectPointingObject"
 
 POINTING_ACTIVE = False
-CARRY = False
+CARRY = True
 
 
 DETECTION_TRIES = 3
@@ -58,10 +58,10 @@ class TasksVision:
                 self.bag_direction_client = rospy.ServiceProxy('/person_pointing', Pointing)
                 if not self.bag_direction_client.wait_for_service(timeout=rospy.Duration(5.0)):
                     rospy.logerr("Bag direction service not initialized")
-            else:
-                self.shelf_client = rospy.ServiceProxy('/shelf_detector', ShelfDetection)
-                if not self.shelf_client.wait_for_service(timeout=rospy.Duration(5.0)):
-                    rospy.logerr("Shelf detection service not initialized")
+            # else:
+                # self.shelf_client = rospy.ServiceProxy('/shelf_detector', ShelfDetection)
+                # if not self.shelf_client.wait_for_service(timeout=rospy.Duration(5.0)):
+                #     rospy.logerr("Shelf detection service not initialized")
             
         else:
             rospy.loginfo("Fake Vision Task Manager initialized")
@@ -122,11 +122,11 @@ class TasksVision:
 
         return TasksVision.STATE["EXECUTION_ERROR"]
     
-    def get_bag_direction(self) -> int:
+    def get_bag_direction(self) -> str:
         """Method to get the bag direction"""
         rospy.loginfo("[INFO] Getting the bag direction")
         if not self.FAKE_TASKS:
-            result = self.bag_direction_client()
+            result = self.bag_direction_client(True, 5)
             directions_dict = {
                 0: "failed",
                 1: "left",
@@ -134,10 +134,10 @@ class TasksVision:
             }
             self.bag_information["id"] = result.result
             self.bag_information["name"] = directions_dict[result.result]
+            return self.bag_information["name"]
         else:
             # Dummy values
-            self.bag_information["id"] = 1
-            self.bag_information["name"] = "left"
+            return "right"
         return TasksVision.STATE["EXECUTION_ERROR"]
     
     def get_bag_information(self) -> dict:
