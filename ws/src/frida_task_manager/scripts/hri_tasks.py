@@ -108,12 +108,12 @@ class TasksHRI:
         """Method to get the guest description stored"""
         return self.guest_description[guest_id]
 
-    def speak(self, text: str, now: bool = False) -> None:
+    def speak(self, text: str, wait: bool = True) -> None:
         """Method to publish directly text to the speech node"""
-        if now:
-            self.pub_speak.publish(text)
-        else:
+        if wait:
             self.speak_client(text)
+        else:
+            self.pub_speak.publish(text)
 
 if __name__ == "__main__":
     try:

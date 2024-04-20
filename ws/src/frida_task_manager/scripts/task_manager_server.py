@@ -19,6 +19,7 @@ from frida_hri_interfaces.msg import ConversateAction, ConversateFeedback, Conve
 from hri_tasks import TasksHRI
 from manipulation_tasks import TasksManipulation
 from nav_tasks import TasksNav
+from vision_tasks import TasksVision
 
 COMMANDS_TOPIC = "/task_manager/commands"
 SPEAK_TOPIC = "/speech/speak"
@@ -38,16 +39,19 @@ AREA_ENABLED = {
     "vision": VISION_ENABLED
 }
 
+STATES = {
+    "IDLE": 0,
+    "COMMANDS_IN_QUEUE": 1,
+    "EXECUTING_COMMANDS": 2,
+    "EXECUTION_SUCCESS": 3,
+    "EXECUTION_FAILED": 4,
+    "STOPPING": 5,
+    "ERROR": 6,
+    "SHUTDOWN": 7
+}
+
 class TaskManagerServer:
     """Class to manage different tasks divided by categories"""
-    STATE_ENUM = {
-        "IDLE": 0,
-        "RECEIVE_COMMANDS": 1,
-        "EXECUTING_COMMANDS": 2,
-        "STOPPING": 3,
-        "ERROR": 4,
-        "SHUTDOWN": 5
-    }
 
     COMMANDS_CATEGORY = {
         "nav" : ["go", "follow", "stop", "approach", "remember"],
@@ -64,18 +68,18 @@ class TaskManagerServer:
         # Creates an empty dictionary to store the subtask manager of each area
         self.subtask_manager = dict.fromkeys(AREAS, None)
 
-        if CONVERSATION_ENABLED:
-            self.subtask_manager["hri"] = TasksHRI()
-            self.subtask_manager["hri"].speak("Hi, my name is Frida. I'm here to help you with your domestic tasks")
         if MANIPULATION_ENABLED:
             self.subtask_manager["manipulation"] = TasksManipulation()
         if NAV_ENABLED:
             self.subtask_manager["nav"] = TasksNav()
-        #if VISION_ENABLED:
-            #self.subtask_manager["vision"] = TasksVision()
+        if VISION_ENABLED:
+            self.subtask_manager["vision"] = TasksVision()
+        if CONVERSATION_ENABLED:
+            self.subtask_manager["hri"] = TasksHRI()
+            self.subtask_manager["hri"].speak("Hi, my name is Frida. I'm here to help you with your domestic tasks")
 
-        self.current_state = TaskManagerServer.STATE_ENUM["IDLE"]
-        self.current_past_state = None
+        self.current_state = STATES["IDLE"]
+        self.past_state = None
         self.current_command = None
         self.current_queue = []
         self.perceived_information = ""
@@ -87,35 +91,51 @@ class TaskManagerServer:
         rospy.loginfo("Received commands")
 
         if not commands_input:
-            self.current_state = TaskManagerServer.STATE_ENUM["ERROR"]
+            self.current_state = STATES["ERROR"]
             return
 
-        if self.current_thread is not None:
-            return
-
-        if self.current_state != TaskManagerServer.STATE_ENUM["IDLE"]:
+        # Check if there are commands pending in the queue and cancel them
+        # TODO: Validate with the user if it wants to cancel all the command queue
+        if self.current_state != STATES["IDLE"]:
             rospy.logerr("Cancelling current commands and executing new received ")
             self.current_queue = []
             self.cancel_command()
-            self.current_state = TaskManagerServer.STATE_ENUM["IDLE"]
+            self.current_state = STATES["IDLE"]
 
-        self.current_state = TaskManagerServer.STATE_ENUM["RECEIVE_COMMANDS"]
+        self.current_state = STATES["RECEIVE_COMMANDS"]
         self.current_queue = commands_input.commands
         self.past_state = self.current_state
-
-        #self.say("I 'have finished my tasks, I'm going to rest now")
 
     def execute_command(self, command: Command) -> int:
         """Method for executing a single command inside its area submodule"""
 
-        rospy.loginfo(f"Executing command: {command.action} -> {command.complement}")
+        rospy.loginfo(f"Executing command: {command.action} -> {command.complement} : {command.characteristic}")
 
-        task_result = 0
+        area_target = ""
         for area in AREAS:
-            if command.action in TaskManagerServer.COMMANDS_CATEGORY[area] and AREA_ENABLED[area]:
-                task_result = self.subtask_manager[area].execute_command(
-                    command.action, command.complement, self.perceived_information
-                )
+            if command.action in TaskManagerServer.COMMANDS_CATEGORY[area]:
+                area_target = area
+
+        if area_target == "hri" and AREA_ENABLED[area_target]:
+            task_result = self.subtask_manager[area].execute_command(
+                command.action, command.complement, self.perceived_information
+            )
+
+
+
+        if command.action in ("interact", "ask"):
+            task_result = self.subtask_manager["hri"].execute_command(
+                command.action, command.complement, self.perceived_information
+            )
+
+        elif command.action == "go":
+            if self.subtask_manager["nav"].go_place(command.complement) == STATES["EXECUTION_SUCCESS"]:
+                self.subtask_manager["hri"].speak("I couldn't reach the goal")
+
+        elif command.action in ("pick", "place", "pour"):
+            #if self.subtask_manager[
+        
+
 
         if task_result == -1:
             rospy.logerr("Error in task execution")
