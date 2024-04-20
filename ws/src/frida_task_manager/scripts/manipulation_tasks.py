@@ -91,7 +91,7 @@ class TasksManipulation:
             self.arm_joints_client.send_goal(
                 MoveJointGoal(target_delta_x = target_x, target_delta_y = target_y)
             )
-        self.arm_joints_client.wait_for_result()
+        self.arm_joints_client.wait_for_result(rospy.Duration(5))
         result = self.arm_joints_client.get_result()
         return TasksManipulation.STATE["EXECUTION_SUCCESS"] if result.success else TasksManipulation.STATE["EXECUTION_ERROR"]
 
