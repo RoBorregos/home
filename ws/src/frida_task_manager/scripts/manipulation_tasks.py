@@ -101,6 +101,8 @@ class TasksManipulation:
             return self.execute_pick_and_place( command )
         if command in ("give"):
             return self.execute_give()
+        if command in ("grab"):
+            return self.execute_grab()
         if command in ("observe"):
             return self.execute_observe()
         return -1
@@ -144,6 +146,22 @@ class TasksManipulation:
         if not self.FAKE_TASKS:
             # execute give
             rospy.loginfo("[INFO] Giving...")
+            self.go_to_joint_position("RECEIVE_JOINT_POSITION")
+            rospy.sleep(1)
+            rospy.loginfo("[INFO] Opening gripper")
+            self.gripper_service(True)
+            rospy.sleep(3)
+            rospy.loginfo("[INFO] Closing gripper")
+            self.gripper_service(False)
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"]
+        else:
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"]
+    
+    def execute_grab(self) -> int:
+        rospy.loginfo(f"[INFO] Grabbing")
+        if not self.FAKE_TASKS:
+            # execute grab
+            rospy.loginfo("[INFO] Moving to grab position")
             self.go_to_joint_position("RECEIVE_JOINT_POSITION")
             rospy.sleep(1)
             rospy.loginfo("[INFO] Opening gripper")
