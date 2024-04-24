@@ -13,11 +13,13 @@ from std_msgs.msg import String
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from geometry_msgs.msg import Pose
 from frida_navigation_interfaces.msg import navServAction, navServFeedback, navServGoal, navServResult
+#from frida_navigation_interfaces.srv import SetFollowState
 
 # Topics and servers
 NAV_SERVER = "/navServer"
 MOVE_BASE_SERVER = "/move_base"
 LOCATION_TOPIC = "/robot_pose"
+APPROACH_SERVICE = "/change_follow_person_state"
 
 # Active functions
 NAV_SERVER_ACTIVE = True
@@ -38,6 +40,7 @@ class TasksNav:
         self.enabled = enabled
         self.nav_server_active = NAV_SERVER_ACTIVE
         self.move_base_active = MOVE_BASE_ACTIVE
+        self.approach_active = False
 
         if enabled and self.nav_server_active:
             self.nav_client = actionlib.SimpleActionClient(NAV_SERVER, navServAction)
@@ -51,6 +54,11 @@ class TasksNav:
                 self.move_base_active = False
                 rospy.logerr("Move Base server not initialized")
         self.past_location = None
+
+
+        #if enabled and self.approach_active:
+            #self.approach_client = rospy.ServiceProxy(APPROACH_SERVICE, SetFollowState)
+
 
 
     def execute_command(self, command: str, target: str, info: str) -> int:
@@ -105,6 +113,20 @@ class TasksNav:
         except rospy.ROSException:
             rospy.logerr("Unable to store current location")
             return TasksNav.STATE["EXECUTION_FAILED"]
+        
+    """def approach_person(self) -> int:
+        Method to approach a person
+        try:
+            #goal = SetFollowState()
+            goal.state = True
+            goal.stopOnPersonReached = True
+            self.approach_client(goal)
+            rospy.loginfo("Approaching person")
+            return TasksNav.STATE["EXECUTION_SUCCESS"]
+        except rospy.ROSException:
+            rospy.logerr("Unable to approach person")
+            return TasksNav.STATE["EXECUTION_FAILED"]
+        """
 
     def cancel_command(self) -> None:
         """Method to cancel the current command"""

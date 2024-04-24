@@ -11,7 +11,7 @@ import actionlib
 ### ROS messages
 from std_msgs.msg import String
 from std_srvs.srv import SetBool
-from frida_vision_interfaces.srv import NewHost, NewHostResponse, FindSeat
+from frida_vision_interfaces.srv import NewHost, NewHostResponse, FindSeat, PersonCount 
 
 STORE_FACE_SERVICE = "/new_name"
 CHECK_PERSON = "/check_person"
@@ -78,6 +78,24 @@ class TasksVision:
         except rospy.ServiceException:
             rospy.logerr("Service call find_seat failed")
             return 300
+        
+    def count_persons(self, requirements: str) -> str:
+        """Method to count the number of persons in the room"""
+        try:
+            rospy.wait_for_service(PERSON_COUNT_START_TOPIC, timeout=5.0)
+            start_count = rospy.ServiceProxy(PERSON_COUNT_START_TOPIC, SetBool)
+            response = start_count(True)
+            if response.success:
+                rospy.wait_for_service(PERSON_COUNT_END_TOPIC, timeout=5.0)
+                goal = PersonCount()
+                end_count = rospy.ServiceProxy(PERSON_COUNT_END_TOPIC, PersonCount)
+                goal.data = requirements
+                response = end_count(goal)
+                return response.count
+        except rospy.ServiceException:
+            rospy.logerr("Service call count_persons failed")
+            return -1
+        
 
     def cancel_command(self) -> None:
         """Method to cancel the current command"""
