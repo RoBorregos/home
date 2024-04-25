@@ -1,22 +1,37 @@
 version: '2.25'
+
 services:
+  rosmaster:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.main
+    container_name: rosmaster
+    hostname: rosmaster
+    networks:
+      - rosdocker
+    ports:
+      - "11311:11311"
+    command: roscore
+
   main:
     build:
       context: .
       dockerfile: docker/Dockerfile.main
+    container_name: task_manager
+    hostname: task_manager
     volumes:
-      - ws:/workspace
+      - ./ws:/workspace
       - /tmp/.X11-unix:/tmp/.X11-unix
       - /var/run/docker.sock:/var/run/docker.sock
       - /dev:/dev
-    network-mode: host
-    
+    networks:
+      - rosdocker
     privileged: true
     devices:
       - /dev/video0:/dev/video0
     environment:
-      - ROS_MASTER_URI=http://192.168.31.23:11311
-      - ROS_IP=192.168.31.97
+      - "ROS_HOSTNAME=task_manager"
+      - "ROS_MASTER_URI=http://rosmaster:11311"
       - DISPLAY=${DISPLAY}
       - LOCAL_USER_ID=id -u ${USER}
       - LOCAL_GROUP_ID=id -g ${USER}
