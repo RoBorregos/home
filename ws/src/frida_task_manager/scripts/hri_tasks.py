@@ -95,22 +95,25 @@ class TasksHRI:
             goal,
             done_cb=self.guest_analysis_done
         )
+        #client.wait_for_result()
+        #result = client.get_result()
+        #return result.description
     
     def guest_analysis_done(self, status, result) -> None:
         """Callback for the guest analysis"""
-        rospy.loginfo(f"Guest analysis result: {result.description}")
+        rospy.loginfo(f"Guest analysis result: {result.description} for guest {result.guest_id}")
         self.guest_description[result.guest_id] = result.description
     
     def get_guest_description(self, guest_id: int) -> str:
         """Method to get the guest description stored"""
         return self.guest_description[guest_id]
 
-    def speak(self, text: str, now: bool = False) -> None:
+    def speak(self, text: str, wait: bool = True) -> None:
         """Method to publish directly text to the speech node"""
-        if now:
-            self.pub_speak.publish(text)
-        else:
+        if wait:
             self.speak_client(text)
+        else:
+            self.pub_speak.publish(text)
 
 if __name__ == "__main__":
     try:
