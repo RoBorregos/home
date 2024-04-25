@@ -2,7 +2,7 @@
 
 Current development of [RoBorregos](www.roborregos.com), for the RoboCup @HOME competition, in the Open League Platform (OPL). The goal is to built a service robot capable of accomplishing tasks in domestic applications. The software areas being developed are: Human-Robot Interaction and Cooperation, Object Manipulation, Computer Vision, and Navigation and Mapping.
 
-This repository features the `main_engine` package, in charge of managing Behavior Integration with all the areas.
+This repository features the `task_manager` package, in charge of managing Behavior Integration with all the areas.
 For more information on the project, check our [documentation](https://docs.rbrgs.com/home/).
 
 ## Setup
