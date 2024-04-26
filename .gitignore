@@ -2,3 +2,4 @@ build
 devel
 terminator-config
 .catkin_workspace
+__pycache__

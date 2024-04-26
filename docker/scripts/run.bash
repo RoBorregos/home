@@ -95,6 +95,7 @@ echo "Building docker image: $IMAGE_NAME"
 echo "Container name: $CONTAINER_NAME"
 echo "Volumes to mount: $VOLUME_COMMANDS"
 
+#DOCKER_SPEECH_ARGS="-v /tmp/pulseaudio.socket:/tmp/pulseaudio.socket -v /tmp/pulseaudio.client.conf:/etc/pulse/client.conf --device /dev/snd:/dev/snd"
 DOCKER_COMMAND="docker run"
 
 xhost +
