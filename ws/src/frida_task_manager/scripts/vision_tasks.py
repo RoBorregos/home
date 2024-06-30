@@ -13,11 +13,11 @@ from std_msgs.msg import String
 from std_srvs.srv import SetBool
 from frida_vision_interfaces.srv import NewHost, NewHostResponse, FindSeat, PersonCount 
 
-STORE_FACE_SERVICE = "/new_name"
-CHECK_PERSON = "/check_person"
-FIND_TOPIC = "/find_seat"
-PERSON_COUNT_START_TOPIC = "/start_counting"
-PERSON_COUNT_END_TOPIC = "/end_counting"
+STORE_FACE_SERVICE = "/vision/new_name"
+CHECK_PERSON = "/vision/check_person"
+FIND_TOPIC = "/vision/find_seat"
+PERSON_COUNT_START_TOPIC = "/vision/start_counting"
+PERSON_COUNT_END_TOPIC = "/vision/end_counting"
 
 class TasksVision:
     """Class to manage the navigation tasks"""
