@@ -185,6 +185,20 @@ class TasksManipulation:
             return TasksManipulation.STATE["EXECUTION_SUCCESS"]
         else:
             return TasksManipulation.STATE["EXECUTION_SUCCESS"]
+    
+    def move_arm_joints(self, target_x: int, target_y: int, position: str = "") -> int:
+        """Method to move the arm joints"""
+        if position != "":
+            self.move_arm_client.send_goal(
+                MoveJointGoal(predefined_position = position)
+            )
+        else:
+            self.move_arm_client.send_goal(
+                MoveJointGoal(target_delta_x = target_x, target_delta_y = target_y)
+            )
+        self.move_arm_client.wait_for_result()
+        result = self.move_arm_client.get_result()
+        return TasksManipulation.STATE["EXECUTION_SUCCESS"] if result.success else TasksManipulation.STATE["EXECUTION_ERROR"]
 
     def cancel_command(self) -> None:
         """Method to cancel the current command"""

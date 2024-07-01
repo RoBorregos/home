@@ -14,7 +14,8 @@ from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from geometry_msgs.msg import Pose, PoseStamped, Point, Quaternion
 from frida_vision_interfaces.msg import DetectPointingObjectAction, DetectPointingObjectGoal, DetectPointingObjectResult, DetectPointingObjectFeedback
 from frida_manipulation_interfaces.msg import objectDetectionArray, objectDetection
-from frida_vision_interfaces.srv import Pointing
+from frida_vision_interfaces.srv import Pointing, NewHost, NewHostResponse, FindSeat
+from std_srvs.srv import SetBool
 #from frida_vision_interfaces.srv import ShelfDetection
 
 import math
@@ -27,6 +28,9 @@ CARRY = True
 
 
 DETECTION_TRIES = 3
+STORE_FACE_SERVICE = "/new_name"
+CHECK_PERSON = "/check_person"
+FIND_TOPIC = "/find_seat"
 
 class TasksVision:
     """Class to manage the navigation tasks"""
@@ -36,7 +40,7 @@ class TasksVision:
         "EXECUTION_SUCCESS": 1
     }
 
-    AREA_TASKS = ["get_bag"]
+    AREA_TASKS = ["get_bag", "wait", "save"]
 
     def __init__(self, fake = False) -> None:
         
@@ -62,7 +66,9 @@ class TasksVision:
                 # self.shelf_client = rospy.ServiceProxy('/shelf_detector', ShelfDetection)
                 # if not self.shelf_client.wait_for_service(timeout=rospy.Duration(5.0)):
                 #     rospy.logerr("Shelf detection service not initialized")
-            
+
+            self.save_name_call = rospy.ServiceProxy(STORE_FACE_SERVICE, NewHost)
+            self.save_name_call.wait_for_service(timeout=rospy.Duration(10.0))
         else:
             rospy.loginfo("Fake Vision Task Manager initialized")
         
@@ -82,8 +88,23 @@ class TasksVision:
             #                                                   pose=Pose(position=Point(10,20,30),
             #                                                             orientation=Quaternion(0,0,0,1))
             # )
-        if command == "get_bag_direction":
+        elif command == "get_bag_direction":
             self.get_bag_direction()
+        elif command == "get_object":
+            self.get_object()
+        elif command == "get_shelves":
+            self.get_shelves()
+        elif command == "save_face_name":
+            self.save_face_name(info)
+        elif command == "check_person":
+            self.check_person()
+        elif command == "find_seat":
+            self.find_seat()
+        elif command == "cancel":
+            self.cancel_command()
+        else:
+            rospy.logerr("[ERROR] Command not recognized")
+            return TasksVision.STATE["TERMINAL_ERROR"]
 
         return TasksVision.STATE["EXECUTION_ERROR"]
 
@@ -192,8 +213,46 @@ class TasksVision:
                 shelf_list.append(newShelve)
             return shelf_list
         return []
-        
+    
+    def save_face_name(self, name: str) -> int:
+        """Method to save the face name"""
+        rospy.loginfo("Save face name")
+        try:
+            response = self.save_name_call( name )
+            if response.success:
+                return TasksVision.STATE["EXECUTION_SUCCESS"]
+        except rospy.ServiceException:
+            rospy.logerr("Service call name failed")
 
+        return TasksVision.STATE["EXECUTION_ERROR"]
+
+    def check_person(self) -> bool:
+        """Method to check if a person is detected calling PersonDetection.py"""
+        try:
+            rospy.wait_for_service(CHECK_PERSON, timeout=5.0)
+            check_person = rospy.ServiceProxy(CHECK_PERSON, SetBool)
+            response = check_person(True)
+            return response.success
+        except rospy.ServiceException:
+            rospy.logerr("Service call check_person failed")
+            return False
+
+    def find_seat(self) -> int:
+        """Method to find the angle the robot should turn to point the free seat"""
+        try:
+            rospy.wait_for_service(FIND_TOPIC, timeout=5.0)
+            find_seat = rospy.ServiceProxy(FIND_TOPIC, FindSeat)
+            response = find_seat(True)
+            if int(response.angle) == -100:
+                return 300
+            return int(response.angle)
+        except rospy.ServiceException:
+            rospy.logerr("Service call find_seat failed")
+            return 300
+
+    def cancel_command(self) -> None:
+        """Method to cancel the current command"""
+        rospy.loginfo("Command canceled Nav")
 
 
 if __name__ == "__main__":
