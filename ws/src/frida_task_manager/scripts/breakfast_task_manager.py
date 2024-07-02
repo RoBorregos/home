@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 
 """
-This script is the base/template for the development of multiple task managers for every task in RoboCup@Home
+Task manager for the Breakfast task of RoboCup @Home 2024
 """
 
 ### Import libraries
 import rospy
 import actionlib
-from threading import current_thread
-import uuid
 
 ### ROS messages
 from std_msgs.msg import String
@@ -20,14 +18,15 @@ from hri_tasks import TasksHRI
 from manipulation_tasks import TasksManipulation
 from nav_tasks import TasksNav
 
-COMMANDS_TOPIC = "/task_manager/commands"
-SPEAK_TOPIC = "/speech/speak"
-CONVERSATION_SERVER = "/conversation_as"
-
-NAV_ENABLED = False
+NAV_ENABLED = True
 MANIPULATION_ENABLED = True
 CONVERSATION_ENABLED = False
 VISION_ENABLED = False
+
+FAKE_NAV = True
+FAKE_MANIPULATION = True
+FAKE_HRI = True
+FAKE_VISION = True
 
 AREAS = ["nav", "manipulation", "hri", "vision"]
 
@@ -51,7 +50,7 @@ class TaskManagerServer:
 
     COMMANDS_CATEGORY = {
         "nav" : ["go", "follow", "stop", "approach", "remember"],
-        "manipulation" : ["pick", "place", "grasp", "give", "open", "close"],
+        "manipulation" : ["pick", "place", "grasp", "give", "open", "close", "pour"],
         "hri" : ["ask", "interact", "feedback"],
         "vision" : ["find", "identify", "count"]
     }
@@ -59,18 +58,17 @@ class TaskManagerServer:
     def __init__(self) -> None:
         self._node = rospy.init_node("task_manager_server")
         self._rate = rospy.Rate(200)
-        self._sub = rospy.Subscriber(COMMANDS_TOPIC, CommandList, self.commands_callback)
 
         # Creates an empty dictionary to store the subtask manager of each area
         self.subtask_manager = dict.fromkeys(AREAS, None)
 
         if CONVERSATION_ENABLED:
-            self.subtask_manager["hri"] = TasksHRI()
+            self.subtask_manager["hri"] = TasksHRI(fake=FAKE_HRI)
             self.subtask_manager["hri"].speak("Hi, my name is Frida. I'm here to help you with your domestic tasks")
         if MANIPULATION_ENABLED:
-            self.subtask_manager["manipulation"] = TasksManipulation()
+            self.subtask_manager["manipulation"] = TasksManipulation(fake=FAKE_MANIPULATION)
         if NAV_ENABLED:
-            self.subtask_manager["nav"] = TasksNav()
+            self.subtask_manager["nav"] = TasksNav(fake=FAKE_NAV)
         #if VISION_ENABLED:
             #self.subtask_manager["vision"] = TasksVision()
 
@@ -79,6 +77,15 @@ class TaskManagerServer:
         self.current_command = None
         self.current_queue = []
         self.perceived_information = ""
+
+        self.current_queue = [
+            Command(action="pick", complement="zucaritas"),
+            Command(action="pour", complement="zucaritas"),
+            Command(action="place", complement="zucaritas"),
+            Command(action="pick", complement="cocacola"),
+            Command(action="pour", complement="cocacola"),
+            Command(action="place", complement="cocacola")
+        ]
 
         self.run()
 
@@ -149,6 +156,7 @@ class TaskManagerServer:
                 self.current_thread = None
                 self.current_queue = []
                 self.current_state = TaskManagerServer.STATE_ENUM["IDLE"]
+                
                 #self.subtask_manager["hri"].speak("I have finished my tasks, I'm going to rest now")
             self._rate.sleep()
 
