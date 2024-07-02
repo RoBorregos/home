@@ -14,7 +14,7 @@ from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from geometry_msgs.msg import Pose, PoseStamped, Point, Quaternion
 from frida_vision_interfaces.msg import DetectPointingObjectAction, DetectPointingObjectGoal, DetectPointingObjectResult, DetectPointingObjectFeedback
 from frida_manipulation_interfaces.msg import objectDetectionArray, objectDetection
-from frida_vision_interfaces.srv import Pointing, NewHost, NewHostResponse, FindSeat
+from frida_vision_interfaces.srv import Pointing, NewHost, NewHostResponse, FindSeat, ShelfDetections
 from std_srvs.srv import SetBool
 #from frida_vision_interfaces.srv import ShelfDetection
 
@@ -31,6 +31,8 @@ DETECTION_TRIES = 3
 STORE_FACE_SERVICE = "/new_name"
 CHECK_PERSON = "/check_person"
 FIND_TOPIC = "/find_seat"
+POSITION_TOPIC = "/person_pointing"
+SHELF_SERVER = "/shelf_detector"
 
 class TasksVision:
     """Class to manage the navigation tasks"""
@@ -59,13 +61,13 @@ class TasksVision:
                 if not self.bag_client.wait_for_server(timeout=rospy.Duration(5.0)):
                     rospy.logerr("Bag server not initialized")
             elif CARRY:
-                self.bag_direction_client = rospy.ServiceProxy('/person_pointing', Pointing)
+                self.bag_direction_client = rospy.ServiceProxy(POSITION_TOPIC, Pointing)
                 if not self.bag_direction_client.wait_for_service(timeout=rospy.Duration(5.0)):
                     rospy.logerr("Bag direction service not initialized")
-            # else:
-                # self.shelf_client = rospy.ServiceProxy('/shelf_detector', ShelfDetection)
-                # if not self.shelf_client.wait_for_service(timeout=rospy.Duration(5.0)):
-                #     rospy.logerr("Shelf detection service not initialized")
+            else:
+                self.shelf_client = rospy.ServiceProxy(SHELF_SERVER, ShelfDetections)
+                if not self.shelf_client.wait_for_service(timeout=rospy.Duration(5.0)):
+                    rospy.logerr("Shelf detection service not initialized")
 
             self.save_name_call = rospy.ServiceProxy(STORE_FACE_SERVICE, NewHost)
             self.save_name_call.wait_for_service(timeout=rospy.Duration(10.0))
@@ -211,9 +213,10 @@ class TasksVision:
             shelf_result = self.shelf_client(True)
             shelf = shelf_result.shelf
             shelf_list = []
+            
             for level in shelf.levels:
                 newShelve = {}
-                # newShelve["shelve_number"] = level.label
+                newShelve["shelve_number"] = level.label
                 newShelve["objects"] = level.objects
                 newShelve["height"] = level.height
                 shelf_list.append(newShelve)

@@ -79,6 +79,8 @@ class TasksNav:
             return self.follow_person()
         if command == "stop_follow":
             return self.stop_follow_person()
+        if command == "approach":
+            return self.approach_pose(target)
 
         return TasksNav.STATE["EXECUTION_ERROR"]
 

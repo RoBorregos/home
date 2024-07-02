@@ -20,6 +20,7 @@ SPEAK_TOPIC = "/speech/speak"
 CONVERSATION_SERVER = "/conversation_as"
 GUEST_INFO_SERVICE = "/guest_info"
 GUEST_ANALYSIS_SERVER = "/guest_analysis_as"
+ITEMS_CATEGORY_SERVER = "/items_category"
 
 class TasksHRI:
     STATE_ENUM = {
@@ -48,8 +49,8 @@ class TasksHRI:
             
             rospy.loginfo("[INFO] Waiting for items category server")
             try:
-                rospy.wait_for_service("/items_category", timeout=2.0)
-                self.category_client = rospy.ServiceProxy("/items_category", ItemsCategory)
+                rospy.wait_for_service(ITEMS_CATEGORY_SERVER, timeout=2.0)
+                self.category_client = rospy.ServiceProxy(ITEMS_CATEGORY_SERVER, ItemsCategory)
             except rospy.ROSException as e:
                 rospy.logwarn("[WARNING] Items category service not available")
 
@@ -62,6 +63,20 @@ class TasksHRI:
         """Method to execute each command"""
         rospy.loginfo("[INFO] HRI Command")
         composed_request = f"{command}: {complement}, perceived info: {perceived_information}"
+
+        if command == "analyze_guest":
+            return self.analyze_guest(int(complement))
+        elif command == "get_guest_info":
+            return self.get_guest_info(int(complement))
+        elif command == "get_guest_description":
+            return self.get_guest_description(int(complement))
+        elif command == "speak":
+            return self.speak(complement)
+        elif command == "cancel":
+            return self.cancel_command()
+        elif command == "get_objects_category":
+            return self.get_objects_category(perceived_information.split(","))
+        
 
         goal = ConversateGoal()
         goal.request = composed_request
