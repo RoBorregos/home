@@ -18,14 +18,15 @@ from hri_tasks import TasksHRI
 from manipulation_tasks import TasksManipulation
 from nav_tasks import TasksNav
 
-COMMANDS_TOPIC = "/task_manager/commands"
-SPEAK_TOPIC = "/speech/speak"
-CONVERSATION_SERVER = "/conversation_as"
-
 NAV_ENABLED = True
 MANIPULATION_ENABLED = True
 CONVERSATION_ENABLED = False
 VISION_ENABLED = False
+
+FAKE_NAV = True
+FAKE_MANIPULATION = True
+FAKE_HRI = True
+FAKE_VISION = True
 
 AREAS = ["nav", "manipulation", "hri", "vision"]
 
@@ -57,18 +58,17 @@ class TaskManagerServer:
     def __init__(self) -> None:
         self._node = rospy.init_node("task_manager_server")
         self._rate = rospy.Rate(200)
-        self._sub = rospy.Subscriber(COMMANDS_TOPIC, CommandList, self.commands_callback)
 
         # Creates an empty dictionary to store the subtask manager of each area
         self.subtask_manager = dict.fromkeys(AREAS, None)
 
         if CONVERSATION_ENABLED:
-            self.subtask_manager["hri"] = TasksHRI()
+            self.subtask_manager["hri"] = TasksHRI(fake=FAKE_HRI)
             self.subtask_manager["hri"].speak("Hi, my name is Frida. I'm here to help you with your domestic tasks")
         if MANIPULATION_ENABLED:
-            self.subtask_manager["manipulation"] = TasksManipulation()
+            self.subtask_manager["manipulation"] = TasksManipulation(fake=FAKE_MANIPULATION)
         if NAV_ENABLED:
-            self.subtask_manager["nav"] = TasksNav()
+            self.subtask_manager["nav"] = TasksNav(fake=FAKE_NAV)
         #if VISION_ENABLED:
             #self.subtask_manager["vision"] = TasksVision()
 

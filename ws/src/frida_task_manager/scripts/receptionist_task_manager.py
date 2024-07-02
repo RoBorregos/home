@@ -32,6 +32,13 @@ MANIPULATION_ENABLED = True
 CONVERSATION_ENABLED = True
 VISION_ENABLED = True
 
+
+FAKE_NAV = True
+FAKE_MANIPULATION = True
+FAKE_HRI = True
+FAKE_VISION = True
+
+
 AREAS = ["nav", "manipulation", "hri", "vision"]
 
 AREA_ENABLED = {
@@ -90,13 +97,13 @@ class ReceptionistTaskManager:
         self.subtask_manager = dict.fromkeys(AREAS, None)
 
         if CONVERSATION_ENABLED:
-            self.subtask_manager["hri"] = TasksHRI()
+            self.subtask_manager["hri"] = TasksHRI(fake=FAKE_HRI)
         if MANIPULATION_ENABLED:
-            self.subtask_manager["manipulation"] = TasksManipulation()
+            self.subtask_manager["manipulation"] = TasksManipulation(fake=FAKE_MANIPULATION)
         if NAV_ENABLED:
-            self.subtask_manager["nav"] = TasksNav()
+            self.subtask_manager["nav"] = TasksNav(fake=FAKE_NAV)
         if VISION_ENABLED:
-            self.subtask_manager["vision"] = TasksVision()
+            self.subtask_manager["vision"] = TasksVision(fake=FAKE_VISION)
             rospy.Subscriber(FACE_LOCATIONS_TOPIC, PersonList, self.get_face_locations)
 
         self.current_state = STATES["WAITING_GUEST"]

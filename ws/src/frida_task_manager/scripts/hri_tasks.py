@@ -48,7 +48,7 @@ class TasksHRI:
             
             rospy.loginfo("[INFO] Waiting for items category server")
             try:
-                rospy.wait_for_service("/items_category", timeout=2.0):
+                rospy.wait_for_service("/items_category", timeout=2.0)
                 self.category_client = rospy.ServiceProxy("/items_category", ItemsCategory)
             except rospy.ROSException as e:
                 rospy.logwarn("[WARNING] Items category service not available")
@@ -84,6 +84,9 @@ class TasksHRI:
     def get_guest_info(self, guest_id: int):
         """Method to get the guest information
         Returns the name and favorite drink of the guest"""
+        if self.FAKE_TASK:
+            return "sample_name", "sample_drink"
+        
         rospy.wait_for_service("/guest_info")
         try:
             guest_info = rospy.ServiceProxy(GUEST_INFO_SERVICE, GuestInfo)
@@ -118,6 +121,8 @@ class TasksHRI:
     
     def get_guest_description(self, guest_id: int) -> str:
         """Method to get the guest description stored"""
+        if self.FAKE_TASK:
+            return "sample_description"
         return self.guest_description[guest_id]
 
     def speak(self, text: str, now: bool = False) -> None:

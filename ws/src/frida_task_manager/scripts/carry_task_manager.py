@@ -19,20 +19,15 @@ from manipulation_tasks import TasksManipulation
 from nav_tasks import TasksNav
 from vision_tasks import TasksVision
 
-COMMANDS_TOPIC = "/task_manager/commands"
-SPEAK_TOPIC = "/speech/speak"
-CONVERSATION_SERVER = "/conversation_as"
-MOVE_BASE_SERVER = "/moveServer"
-
 NAV_ENABLED = True
 MANIPULATION_ENABLED = True
 CONVERSATION_ENABLED = True
 VISION_ENABLED = True
 
-FAKE_NAV = False
-FAKE_MANIPULATION = False
-FAKE_HRI = False
-FAKE_VISION = False
+FAKE_NAV = True
+FAKE_MANIPULATION = True
+FAKE_HRI = True
+FAKE_VISION = True
 
 AREAS = ["nav", "manipulation", "hri", "vision"]
 
@@ -99,7 +94,6 @@ class TaskManagerServer:
     def __init__(self) -> None:
         self._node = rospy.init_node("task_manager_server")
         self._rate = rospy.Rate(200)
-        # self._sub = rospy.Subscriber(COMMANDS_TOPIC, CommandList, self.commands_callback)
         self.following = False
         rospy.loginfo("STARTED STOP SUB")
         self.stop_following_sub = rospy.Subscriber("/stop_following", Bool, self.stop_following_callback)

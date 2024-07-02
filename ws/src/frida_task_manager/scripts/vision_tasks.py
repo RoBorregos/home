@@ -113,23 +113,12 @@ class TasksVision:
         rospy.loginfo("[INFO] Getting the bag")
 
         if not self.FAKE_TASKS:
-            goal = DetectPointingObjectGoal(waiting_time=5)
-            self.bag_client.send_goal(goal)
-            self.bag_client.wait_for_result()
-
-            result = self.bag_client.get_result()
-        else:
             if POINTING_ACTIVE:
-                # Dummy values
-                result = DetectPointingObjectResult(result = True, label=1, labelText="bag", point3D=PoseStamped(header="base_link", pose=Pose(position=(10, 20, 30), orientation=(70, 60, 50, 1))))
+                goal = DetectPointingObjectGoal(waiting_time=5)
+                self.bag_client.send_goal(goal)
+                self.bag_client.wait_for_result()
 
-                if result.result:
-                    rospy.loginfo(f"[SUCCESS] Result: {result}")
-                    rospy.loginfo(f"[SUCCESS] Pose Result: {result.point3D}")
-                    self.bag_information["id"] = result.label
-                    self.bag_information["name"] = result.labelText
-                    self.bag_information["PoseStamped"] = result.point3D
-                    return TasksVision.STATE["EXECUTION_SUCCESS"]
+                result = self.bag_client.get_result()
             else:
                 result = self.bag_direction_client()
                 if result.data != 0:
@@ -140,7 +129,25 @@ class TasksVision:
                     }
                     self.bag_information["id"] = result.data
                     self.bag_information["name"] = directions_dict[result.data]
+                if result.result:
+                    rospy.loginfo(f"[SUCCESS] Result: {result}")
+                    rospy.loginfo(f"[SUCCESS] Pose Result: {result.point3D}")
+                    self.bag_information["id"] = result.label
+                    self.bag_information["name"] = result.labelText
+                    self.bag_information["PoseStamped"] = result.point3D
+                    return TasksVision.STATE["EXECUTION_SUCCESS"]
+        else:
+            # Dummy values
+            result = DetectPointingObjectResult(result = True, label=1, labelText="bag", point3D=PoseStamped(header="base_link", pose=Pose(position=(10, 20, 30), orientation=(70, 60, 50, 1))))
 
+            if result.result:
+                rospy.loginfo(f"[SUCCESS] Result: {result}")
+                rospy.loginfo(f"[SUCCESS] Pose Result: {result.point3D}")
+                self.bag_information["id"] = result.label
+                self.bag_information["name"] = result.labelText
+                self.bag_information["PoseStamped"] = result.point3D
+                return TasksVision.STATE["EXECUTION_SUCCESS"]
+            
         return TasksVision.STATE["EXECUTION_ERROR"]
     
     def get_bag_direction(self) -> str:
@@ -159,7 +166,6 @@ class TasksVision:
         else:
             # Dummy values
             return "right"
-        return TasksVision.STATE["EXECUTION_ERROR"]
     
     def get_bag_information(self) -> dict:
         """Method to get the bag information"""
@@ -216,6 +222,9 @@ class TasksVision:
     
     def save_face_name(self, name: str) -> int:
         """Method to save the face name"""
+        if self.FAKE_TASKS:
+            return TasksVision.STATE["EXECUTION_SUCCESS"]
+        
         rospy.loginfo("Save face name")
         try:
             response = self.save_name_call( name )
@@ -228,17 +237,23 @@ class TasksVision:
 
     def check_person(self) -> bool:
         """Method to check if a person is detected calling PersonDetection.py"""
+        if self.FAKE_TASKS:
+            return True
+        
         try:
             rospy.wait_for_service(CHECK_PERSON, timeout=5.0)
             check_person = rospy.ServiceProxy(CHECK_PERSON, SetBool)
             response = check_person(True)
             return response.success
-        except rospy.ServiceException:
+        except rospy.ROSException:
             rospy.logerr("Service call check_person failed")
             return False
 
     def find_seat(self) -> int:
         """Method to find the angle the robot should turn to point the free seat"""
+        if self.FAKE_TASKS:
+            return 300
+        
         try:
             rospy.wait_for_service(FIND_TOPIC, timeout=5.0)
             find_seat = rospy.ServiceProxy(FIND_TOPIC, FindSeat)
