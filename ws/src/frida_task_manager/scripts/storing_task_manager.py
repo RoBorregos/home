@@ -33,7 +33,7 @@ FAKE_VISION = True
 
 
 AREAS = ["nav", "manipulation", "hri", "vision"]
-VISION_AVAILABLE_MODES = ["get_shelves", "moondream", "robust"]
+VISION_AVAILABLE_MODES = ["fast_execution", "robust"]
 
 AREA_ENABLED = {
     "nav": NAV_ENABLED,
@@ -188,10 +188,8 @@ class TaskManagerServer:
 
                 rospy.loginfo("[INFO] Analyzing shelves")
                 
-                if self.vision_mode == "get_shelves":
+                if self.vision_mode == "fast_execution":
                     self.shelf_list = self.subtask_manager["vision"].get_shelves()
-                elif self.vision_mode == "moondream":
-                    self.shelf_list = self.subtask_manager["vision"].get_shelves_moondream()
                 else:
                     self.shelf_list = []
                     for height in self.shelf_heights:
@@ -199,7 +197,7 @@ class TaskManagerServer:
                         if result == TaskManagerServer.STATE_ENUM["ERROR"]:
                             rospy.logerr("[ERROR] Error in task execution")
                             return
-                        labels = self.subtask_manager["vision"].get_objects()
+                        labels = self.subtask_manager["vision"].get_shelve_moondream()
 
                         if labels is not None:
                             self.shelf_list += labels

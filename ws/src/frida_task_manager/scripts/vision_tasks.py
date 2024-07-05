@@ -247,7 +247,7 @@ class TasksVision:
             return shelf_list
         return []
     
-    def get_shelves_moondream(self) -> list:
+    def get_shelve_moondream(self) -> list:
         return []
 
     def save_face_name(self, name: str) -> int:
