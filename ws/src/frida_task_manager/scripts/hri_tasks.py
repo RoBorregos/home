@@ -21,6 +21,7 @@ CONVERSATION_SERVER = "/conversation_as"
 GUEST_INFO_SERVICE = "/guest_info"
 GUEST_ANALYSIS_SERVER = "/guest_analysis_as"
 ITEMS_CATEGORY_SERVER = "/items_category"
+OBJECT_CATEGORY_SERVER = "/object_category"
 
 class TasksHRI:
     STATE_ENUM = {
@@ -32,10 +33,11 @@ class TasksHRI:
         "SHUTDOWN": 5
     }
 
-    AREA_TASKS = ["ask", "interact", "feedback"]
+    AREA_TASKS = ["ask", "interact", "feedback", "analyze_objects"]
 
     def __init__(self, fake = False) -> None:
         self.FAKE_TASK = fake
+        self.fake_index = 0
         self.guest_description = ["", "", ""]
 
         if not self.FAKE_TASK:
@@ -50,7 +52,14 @@ class TasksHRI:
             rospy.loginfo("[INFO] Waiting for items category server")
             try:
                 rospy.wait_for_service(ITEMS_CATEGORY_SERVER, timeout=2.0)
-                self.category_client = rospy.ServiceProxy(ITEMS_CATEGORY_SERVER, ItemsCategory)
+                self.items_category_client = rospy.ServiceProxy(ITEMS_CATEGORY_SERVER, ItemsCategory)
+            except rospy.ROSException as e:
+                rospy.logwarn("[WARNING] Items category service not available")
+            
+            rospy.loginfo("[INFO] Waiting for object category server")
+            try:
+                rospy.wait_for_service(OBJECT_CATEGORY_SERVER, timeout=2.0)
+                self.object_category_client = rospy.ServiceProxy(OBJECT_CATEGORY_SERVER, ItemsCategory)
             except rospy.ROSException as e:
                 rospy.logwarn("[WARNING] Items category service not available")
 
@@ -64,18 +73,18 @@ class TasksHRI:
         rospy.loginfo("[INFO] HRI Command")
         composed_request = f"{command}: {complement}, perceived info: {perceived_information}"
 
-        if command == "analyze_guest":
-            return self.analyze_guest(int(complement))
-        elif command == "get_guest_info":
-            return self.get_guest_info(int(complement))
-        elif command == "get_guest_description":
-            return self.get_guest_description(int(complement))
-        elif command == "speak":
-            return self.speak(complement)
-        elif command == "cancel":
-            return self.cancel_command()
-        elif command == "get_objects_category":
-            return self.get_objects_category(perceived_information.split(","))
+        # if command == "analyze_guest":
+        #     return self.analyze_guest(int(complement))
+        # elif command == "get_guest_info":
+        #     return self.get_guest_info(int(complement))
+        # elif command == "get_guest_description":
+        #     return self.get_guest_description(int(complement))
+        # elif command == "speak":
+        #     return self.speak(complement)
+        # elif command == "cancel":
+        #     return self.cancel_command()
+        # elif command == "analyze_objects":
+        #     return self.get_objects_category(perceived_information.split(","))
         
 
         goal = ConversateGoal()
@@ -148,11 +157,19 @@ class TasksHRI:
         else:
             rospy.loginfo(f"[INFO] Speaking: {text}")
     
-    def get_objects_category(self, object_names) -> str:
+    def get_items_category(self, object_names) -> str:
         """Method to get the category of a list of object names"""
         if self.FAKE_TASK:
-            return "sample_category2"
-        response = self.category_client(items=object_names)
+            self.fake_index += 1
+            return "sample_category_" + str(self.fake_index)
+        response = self.items_category_client(items=object_names)
+        return response.category
+
+    def get_object_category(self, object_name) -> str:
+        """Method to get the category of a single object"""
+        if self.FAKE_TASK:
+            return "sample_category_" + str(self.fake_index + 1)
+        response = self.object_category_client(items=[object_name])
         return response.category
 
 if __name__ == "__main__":

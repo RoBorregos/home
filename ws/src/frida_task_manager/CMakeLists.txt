@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   move_base_msgs
+  geometry_msgs
 )
 
 ## Generate messages in the 'msg' folder

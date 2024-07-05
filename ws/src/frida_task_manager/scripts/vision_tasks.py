@@ -33,6 +33,7 @@ CHECK_PERSON = "/check_person"
 FIND_TOPIC = "/find_seat"
 POSITION_TOPIC = "/person_pointing"
 SHELF_SERVER = "/shelf_detector"
+DETECTION_TOPIC = "/detections"
 
 class TasksVision:
     """Class to manage the navigation tasks"""
@@ -42,7 +43,7 @@ class TasksVision:
         "EXECUTION_SUCCESS": 1
     }
 
-    AREA_TASKS = ["get_bag", "wait", "save"]
+    AREA_TASKS = ["get_bag", "wait", "save", "get_shelves"]
 
     def __init__(self, fake = False) -> None:
         
@@ -53,6 +54,10 @@ class TasksVision:
             "name": "",
             "PoseStamped": PoseStamped()
         }
+
+        self.no_objects_str = "No objects detected"
+        self.n_detections = 5
+        self.detected_objects = None
         
         if not self.FAKE_TASKS:
             rospy.loginfo("[INFO] Waiting for bag server")
@@ -180,7 +185,7 @@ class TasksVision:
         for i in range(DETECTION_TRIES):
             rospy.loginfo("[INFO] Getting Detections")
             try: 
-                detections = rospy.wait_for_message("/detections", objectDetectionArray, timeout=10.0)
+                detections = rospy.wait_for_message(DETECTION_TOPIC, objectDetectionArray, timeout=10.0)
                 closest_distance = 10000
                 closest_index = 0
                 for i, detection in enumerate(detections.detections):
@@ -194,7 +199,21 @@ class TasksVision:
                 return detections.detections[closest_index].labelText
                     
             except rospy.exceptions.ROSException:
-                print("No objects detected")
+                print(self.no_objects_str)
+            
+        return self.no_objects_str
+
+    def get_objects(self) -> list:
+        """Method to get the labels of the detected objects"""
+        obj_labels = []
+        for i in range(5):
+            self.detected_objects = rospy.wait_for_message(DETECTION_TOPIC, objectDetectionArray)
+            for obj in self.detected_objects.objects:
+                obj_labels.append(obj.labelText)
+
+        obj_labels = list(set(obj_labels))
+            
+        return obj_labels
         
     def get_shelves(self) -> list:
         """Method to get the shelves"""
@@ -202,12 +221,17 @@ class TasksVision:
         if self.FAKE_TASKS:
             newShelve = {}
             newShelve["shelve_number"] = 1
-            newShelve["category"] = "sample_category1"
-            newShelve["height"] = 0.30
+            newShelve["objects"] = ["sample_object1", "sample_object2", "sample_object3"]
+            newShelve["height"] = 0.40
             newShelve2 = {}
             newShelve2["shelve_number"] = 2
-            newShelve2["category"] = "sample_category2"
-            newShelve2["height"] = 0.40
+            newShelve2["objects"] = ["sample_object1", "sample_object2", "sample_object3"]
+            newShelve2["height"] = 0.70
+            # newShelve3 = {}
+            # newShelve3["shelve_number"] = 3
+            # newShelve3["objects"] = ["sample_object1", "sample_object2", "sample_object3"]
+            # newShelve3["height"] = 1.0
+            
             return [newShelve, newShelve2]
         else:
             shelf_result = self.shelf_client(True)
@@ -223,6 +247,9 @@ class TasksVision:
             return shelf_list
         return []
     
+    def get_shelves_moondream(self) -> list:
+        return []
+
     def save_face_name(self, name: str) -> int:
         """Method to save the face name"""
         if self.FAKE_TASKS:
