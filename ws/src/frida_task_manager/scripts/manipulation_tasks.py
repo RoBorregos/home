@@ -18,11 +18,12 @@ from std_msgs.msg import String, Int32
 from std_srvs.srv import SetBool
 from frida_hri_interfaces.msg import Command, CommandList
 from frida_manipulation_interfaces.msg import manipulationPickAndPlaceAction, manipulationPickAndPlaceGoal, manipulationPickAndPlaceResult, manipulationPickAndPlaceFeedback
-from frida_manipulation_interfaces.msg import MoveJointAction, MoveJointGoal, MoveJointResult, MoveJointFeedback
-from frida_manipulation_interfaces.srv import Gripper
+from frida_manipulation_interfaces.msg import MoveJointAction, MoveJointGoal, MoveJointResult, MoveJointFeedback, moveXYZ
+from frida_manipulation_interfaces.srv import Gripper, MovePose
 
 MANIPULATION_SERVER = "/manipulationServer"
 ARM_SERVER = "/arm_joints_as"
+MOVE_SERVER = "/cartesian_movement_services/MovePose"
 PLACE_TARGET = -5
 POUR_TARGET = -10
 
@@ -45,26 +46,6 @@ MANIPULATION_POSITIONS = {
     "CARRYING_JOINT_POSITION": CARRYING_JOINT_POSITION
     
 }
-
-# class ObjectDetected:
-#     def __init__(self, label,
-#                 labelText,
-#                 score,
-#                 ymin,
-#                 xmin,
-#                 ymax,
-#                 xmax,
-#                 point3D):
-#         # This message holds the data of an object detected by vision
-#         label_ = label,
-#         labelText_ = labelText,
-#         score_ = score,
-#         ymin_ = ymin,
-#         xmin_ = xmin,
-#         ymax_ = ymax,
-#         xmax_ = xmax,
-#         point3D_ = point3D,
-
 
 class TasksManipulation:
     """Manager for the manipulation area tasks"""
@@ -91,7 +72,8 @@ class TasksManipulation:
             rospy.loginfo("[INFO] Waiting for manipulation server")
             self.manipulation_client = actionlib.SimpleActionClient(MANIPULATION_SERVER, manipulationPickAndPlaceAction)
             self.move_arm_client = actionlib.SimpleActionClient(ARM_SERVER, MoveJointAction)
-            self.gripper_service = rospy.ServiceProxy('/gripper_service', Gripper)            
+            self.gripper_service = rospy.ServiceProxy('/gripper_service', Gripper)     
+            self.move_pose_client = rospy.ServiceProxy(MOVE_SERVER,MovePose)       
             rospy.loginfo("[INFO] Connecting to manipulation_server")
             # if not self.manipulation_client.wait_for_server(timeout=rospy.Duration(10.0)):
             #     rospy.logerr("[SUCCESS] Manipulation server not initialized")
@@ -105,6 +87,10 @@ class TasksManipulation:
             rospy.loginfo("[INFO] Connecting to gripper_service")
             if not self.gripper_service.wait_for_service(timeout=rospy.Duration(10.0)):
                 rospy.logerr("[SUCCESS] Gripper service not initialized")
+            rospy.loginfo("[INFO] Connecting to move_pose_client")
+            if not self.move_pose_client.wait_for_service(timeout=rospy.Duration(10.0)):
+                rospy.logerr("[SUCCESS] Move pose client not initialized")
+            # rospy.loginfo("[INFO] Connecting to arm group")
                 
             self.OBSERVER = [-1.5700864791870117, -1.1652400493621826, -1.4244275093078613, -6.2831220626831055, 0.3724396228790283, -5.487866401672363, 0.0] ## TO RADIANDS USING PI
             self.NAV_ARM = [-1.5701032876968384, -1.1651480197906494, -1.424232840538025, -6.283036231994629, 0.9078435301780701, -5.487793445587158, 0.0]
@@ -275,6 +261,22 @@ class TasksManipulation:
         if not self.FAKE_TASKS:
             self.gripper_service("close")
             return TasksManipulation.STATE["EXECUTION_SUCCESS"]
+        else:
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"]
+        
+    def move_xyz(self, x = 0, y = 0, z = 0, move_x = False, move_y = False, move_z = False, shelf_size = 0.3) -> int:
+        """Method to move the arm to a predefined joint position"""
+        if not self.FAKE_TASKS:
+            move_pose_ = moveXYZ()
+            move_pose_.x = x
+            move_pose_.y = y
+            move_pose_.z = z + (shelf_size / 2)
+            move_pose_.move_x = move_x
+            move_pose_.move_y = move_y
+            move_pose_.move_z = move_z
+
+            resp = self.move_pose_client(move_pose_)
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"] if resp.success else TasksManipulation.STATE["EXECUTION_ERROR"]
         else:
             return TasksManipulation.STATE["EXECUTION_SUCCESS"]
 

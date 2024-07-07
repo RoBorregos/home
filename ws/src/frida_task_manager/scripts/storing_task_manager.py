@@ -26,11 +26,11 @@ CONVERSATION_ENABLED = True
 VISION_ENABLED = True
 
 FAKE_NAV = True
-FAKE_MANIPULATION = True
+FAKE_MANIPULATION = False
 FAKE_HRI = True
 FAKE_VISION = True
 
-
+SHELF_SIZE = 0.35
 
 AREAS = ["nav", "manipulation", "hri", "vision"]
 VISION_AVAILABLE_MODES = ["fast_execution", "robust"]
@@ -128,7 +128,9 @@ class TaskManagerServer:
         """Main loop for the task manager"""
         self.shelf_list = None
         self.shelf_category = {}
-        self.shelf_heights = [0.0, 0.6, 0.95, 1.30]
+        # self.shelf_heights = [0.0, 0.6, 0.95, 1.30]
+
+        self.shelf_heights = [0.0, 0.6, 0.95]
         self.picked_object = None
 
         def lower_bound(arr, x):
@@ -193,10 +195,14 @@ class TaskManagerServer:
                 else:
                     self.shelf_list = []
                     for height in self.shelf_heights:
-                        result = self.subtask_manager["manipulation"].move_arm_joints(0, height)
+                        if height == 0.0:
+                            continue
+                        
+                        result = self.subtask_manager["manipulation"].move_xyz(z = height, move_z = True, shelf_size = SHELF_SIZE)
                         if result == TaskManagerServer.STATE_ENUM["ERROR"]:
                             rospy.logerr("[ERROR] Error in task execution")
                             return
+                    
                         
                         category = self.subtask_manager["vision"].get_shelve_moondream()
                         self.shelf_category[category] = height
