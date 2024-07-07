@@ -108,7 +108,7 @@ class TasksVision:
                 rospy.logerr("Moondream from camera server not initialized")
             
         else:
-            rospy.loginfo("Fake Vision Task Manager initialized")
+            rospy.loginfo("[INFO] Fake Vision Task Manager initialized")
         
         rospy.loginfo("[SUCCESS] Vision Task Manager initialized")
 
@@ -309,6 +309,8 @@ class TasksVision:
     
     def get_people(self, in_room = False) -> list:
         """ Method to get the people detected in the image """
+        if self.FAKE_TASKS:
+            return [Person(), Person()]
         people = []
         detections = rospy.wait_for_message(ROOM_DETECTIONS_TOPIC if in_room else DETECTION_TOPIC, objectDetectionArray)
         for detection in detections.detections:

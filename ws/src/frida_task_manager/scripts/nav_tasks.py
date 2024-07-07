@@ -14,7 +14,7 @@ from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from tf2_geometry_msgs import PoseStamped, PointStamped
 from geometry_msgs.msg import Pose
 from frida_navigation_interfaces.msg import navServAction, navServFeedback, navServGoal, navServResult
-from frida_navigation_interfaces.srv import CreateGoal, CreateGoalRequest, CreateGoalResponse
+from frida_navigation_interfaces.srv import CreateGoal, CreateGoalRequest, CreateGoalResponse, RoomGetter
 from frida_navigation_interfaces.msg import moveActionAction, moveActionGoal, moveActionResult, moveActionFeedback
 from std_srvs.srv import SetBool
 import math
@@ -26,6 +26,10 @@ NAV_SERVER = "/navServer"
 MOVE_BASE_SERVER = "/move_base"
 LOCATION_TOPIC = "/robot_pose"
 APPROACH_SERVER = "/moveServer"
+ROOM_SERVER = "/room_getter"
+CREATE_GOAL_SERVER = "/create_goal"
+FOLLOW_PERSON_TOGGLE = "/change_follow_person_state"
+TEST_POSE_PUBLISHER = "/nav_test_pose_task_manager"
 
 class TasksNav:
     """Class to manage the navigation tasks"""
@@ -42,25 +46,29 @@ class TasksNav:
         if not self.FAKE_TASKS:
             self.tf_buffer = tf2_ros.Buffer()
             self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
-            #self.nav_client = actionlib.SimpleActionClient(NAV_SERVER, navServAction)
+            self.nav_client = actionlib.SimpleActionClient(NAV_SERVER, navServAction)
             self.move_base_client = actionlib.SimpleActionClient(MOVE_BASE_SERVER, MoveBaseAction)
-            self.approach_client = actionlib.SimpleActionClient(APPROACH_SERVER, moveActionAction)
-            # self.map_pose_transformer = rospy.ServiceProxy("/create_goal", CreateGoal)
-            self.follow_person_toggle = rospy.ServiceProxy("/change_follow_person_state", SetBool)
-            self.test_pose_pub = rospy.Publisher("/nav_test_pose_task_manager", PoseStamped, queue_size=1)
-            
+            # self.approach_client = actionlib.SimpleActionClient(APPROACH_SERVER, moveActionAction)
+            self.map_pose_transformer = rospy.ServiceProxy(CREATE_GOAL_SERVER, CreateGoal)
+            self.follow_person_toggle = rospy.ServiceProxy(FOLLOW_PERSON_TOGGLE, SetBool)
+            self.test_pose_pub = rospy.Publisher(TEST_POSE_PUBLISHER, PoseStamped, queue_size=1)
+            self.room_getter = rospy.ServiceProxy(ROOM_SERVER, RoomGetter)
+
             rospy.loginfo("[INFO] Waiting for nav server")
-            #if not self.nav_client.wait_for_server(timeout=rospy.Duration(5.0)):
-             #   rospy.logerr("Nav server not initialized")
+            if not self.nav_client.wait_for_server(timeout=rospy.Duration(5.0)):
+               rospy.logerr("Nav server not initialized")
             rospy.loginfo("[INFO] Waiting for move base server")
             if not self.move_base_client.wait_for_server(timeout=rospy.Duration(5.0)):
                 rospy.logerr("[INFO] Move Base server not initialized")
-            # rospy.loginfo("[INFO] Waiting for map pose transformer")
-            # if not self.map_pose_transformer.wait_for_service(timeout=rospy.Duration(5.0)):
-            #     rospy.logerr("[INFO] Map pose transformer not initialized")
-                # rospy.loginfo("[INFO] Waiting for approach person service")
-                # if not self.approach_client.wait_for_server(timeout=rospy.Duration(5.0)):
-                #     rospy.logerr("[INFO] Approach person server not initialized")
+            rospy.loginfo("[INFO] Waiting for map pose transformer")
+            if not self.map_pose_transformer.wait_for_service(timeout=rospy.Duration(5.0)):
+                rospy.logerr("[INFO] Map pose transformer not initialized")
+            # rospy.loginfo("[INFO] Waiting for approach person service")
+            # if not self.approach_client.wait_for_server(timeout=rospy.Duration(5.0)):
+                # rospy.logerr("[INFO] Approach person server not initialized")
+            rospy.loginfo("[INFO] Waiting for room getter service")
+            if not self.room_getter.wait_for_service(timeout=rospy.Duration(5.0)):
+                rospy.logerr("[INFO] Room getter service not initialized")
         else:
             rospy.loginfo("[INFO] Fake Nav Task Manager initialized")
         
@@ -229,19 +237,34 @@ class TasksNav:
     ## STICKLER
     #############################
     
-    def get_current_room(self) -> str:
+    def get_robot_current_room(self) -> str:
         """ Method to get the robot's current room """
         if self.FAKE_TASKS:
             return "kitchen"
         # Get the current pose of the robot
-        return "kitchen"
+        robot_current_pose = rospy.wait_for_message(LOCATION_TOPIC, Pose, timeout=3.0)
+        robot_current_point = PointStamped()
+        robot_current_point.header.frame_id = "map"
+        robot_current_point.point.x = robot_current_pose.position.x
+        robot_current_point.point.y = robot_current_pose.position.y
+        robot_current_point.point.z = robot_current_pose.position.z
+
+        # Get the room of the point
+        goal = RoomGetter()
+        goal.target_point = robot_current_point
+        result = self.room_getter(goal)
+        
+        return result.room
     
     def get_point_room(self, point: PointStamped) -> str:
         """ Method to get the room of a specific point """
         if self.FAKE_TASKS:
             return "kitchen"
         # Get the room of the point
-        return "kitchen"
+        goal = RoomGetter()
+        goal.target_point = point
+        result = self.room_getter(goal)
+        return result.room
         
 
     def cancel_command(self) -> None:
