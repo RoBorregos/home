@@ -182,7 +182,7 @@ class TaskManagerServer:
                     break
                 self.current_state = TaskManagerServer.TASK_STATES["ANALYZE_SHELVE"]
             elif self.current_state == TaskManagerServer.TASK_STATES["ANALYZE_SHELVE"]:
-                if (self.shelf_list is not None or self.vision_mode == "robust"):
+                if ((self.shelf_list is not None and self.shelf_category == {}) or self.vision_mode == "robust"):
                     self.current_state = TaskManagerServer.TASK_STATES["APPROACH_SHELVE"]
                     continue
 
@@ -197,11 +197,9 @@ class TaskManagerServer:
                         if result == TaskManagerServer.STATE_ENUM["ERROR"]:
                             rospy.logerr("[ERROR] Error in task execution")
                             return
-                        labels = self.subtask_manager["vision"].get_shelve_moondream()
-
-                        if labels is not None:
-                            self.shelf_list += labels
-                            
+                        
+                        category = self.subtask_manager["vision"].get_shelve_moondream()
+                        self.shelf_category[category] = height
                         if FAKE_VISION:
                             break
 
