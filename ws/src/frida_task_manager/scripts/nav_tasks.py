@@ -150,27 +150,6 @@ class TasksNav:
     def approach_pose(self, target: str) -> int:
         """Action to approach a specific location"""
         if not self.FAKE_TASKS:
-            # # transform to base_footprint
-            # transformed_point = self.tf_buffer.transform(target, "base_footprint")
-            # # calculate angle to face the target
-            # angle = math.atan2(transformed_point.point.y, transformed_point.point.x)
-            # transformed_target = PoseStamped()
-            # transformed_target.header.frame_id = "base_footprint"
-            # transformed_target.pose.position.x = 0
-            # transformed_target.pose.position.y = 0
-            # transformed_target.pose.position.z = 0
-            # quaternion = transformations.quaternion_from_euler(0, 0, angle*0.8)
-            # transformed_target.pose.orientation.x = quaternion[0]
-            # transformed_target.pose.orientation.y = quaternion[1]
-            # transformed_target.pose.orientation.z = quaternion[2]
-            # transformed_target.pose.orientation.w = quaternion[3]
-            # map_target = self.tf_buffer.transform(transformed_target, "map")
-            # move_goal = MoveBaseGoal()
-            # move_goal.target_pose = map_target
-            # self.test_pose_pub.publish(map_target)
-            # self.move_base_client.send_goal(move_goal)
-            # self.move_base_client.wait_for_result()
-            
             rospy.loginfo("[INFO] Approaching pose")
             goal = navServGoal()
             goal.goal_type = moveActionGoal.FORWARD

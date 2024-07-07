@@ -223,7 +223,7 @@ class TaskManagerServer:
                         category = self.subtask_manager["hri"].get_items_category(self.shelf_list[i]["objects"])
                         index = lower_bound(self.shelf_heights, self.shelf_list[i]["height"])
                         if index == 0:
-                            rospy.logerr(f"[ERROR] Invalid shelve height for {self.shelf_list[i]["objects"]}")
+                            # rospy.logerr(f"[ERROR] Invalid shelve height for {self.shelf_list[i]["objects"]}")
                             continue
                         self.shelf_category[category] = self.shelf_heights[index]
                     rospy.loginfo(f"[INFO] Categories: {self.shelf_category}")
