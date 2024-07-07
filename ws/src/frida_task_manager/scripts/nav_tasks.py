@@ -42,25 +42,25 @@ class TasksNav:
         if not self.FAKE_TASKS:
             self.tf_buffer = tf2_ros.Buffer()
             self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
-            #self.nav_client = actionlib.SimpleActionClient(NAV_SERVER, navServAction)
+            self.nav_client = actionlib.SimpleActionClient(NAV_SERVER, navServAction)
             self.move_base_client = actionlib.SimpleActionClient(MOVE_BASE_SERVER, MoveBaseAction)
-            self.approach_client = actionlib.SimpleActionClient(APPROACH_SERVER, moveActionAction)
+            # self.approach_client = actionlib.SimpleActionClient(APPROACH_SERVER, moveActionAction)
             # self.map_pose_transformer = rospy.ServiceProxy("/create_goal", CreateGoal)
             self.follow_person_toggle = rospy.ServiceProxy("/change_follow_person_state", SetBool)
             self.test_pose_pub = rospy.Publisher("/nav_test_pose_task_manager", PoseStamped, queue_size=1)
             
             rospy.loginfo("[INFO] Waiting for nav server")
-            #if not self.nav_client.wait_for_server(timeout=rospy.Duration(5.0)):
-             #   rospy.logerr("Nav server not initialized")
+            if not self.nav_client.wait_for_server(timeout=rospy.Duration(5.0)):
+               rospy.logerr("Nav server not initialized")
             rospy.loginfo("[INFO] Waiting for move base server")
             if not self.move_base_client.wait_for_server(timeout=rospy.Duration(5.0)):
                 rospy.logerr("[INFO] Move Base server not initialized")
-            # rospy.loginfo("[INFO] Waiting for map pose transformer")
+            rospy.loginfo("[INFO] Waiting for map pose transformer")
             # if not self.map_pose_transformer.wait_for_service(timeout=rospy.Duration(5.0)):
             #     rospy.logerr("[INFO] Map pose transformer not initialized")
-                # rospy.loginfo("[INFO] Waiting for approach person service")
-                # if not self.approach_client.wait_for_server(timeout=rospy.Duration(5.0)):
-                #     rospy.logerr("[INFO] Approach person server not initialized")
+            # rospy.loginfo("[INFO] Waiting for approach person service")
+            # if not self.approach_client.wait_for_server(timeout=rospy.Duration(5.0)):
+            #     rospy.logerr("[INFO] Approach person server not initialized")
         else:
             rospy.loginfo("[INFO] Fake Nav Task Manager initialized")
         
@@ -79,6 +79,8 @@ class TasksNav:
             return self.follow_person()
         if command == "stop_follow":
             return self.stop_follow_person()
+        if command == "approach":
+            return self.approach_pose(target)
 
         return TasksNav.STATE["EXECUTION_ERROR"]
 
@@ -101,10 +103,10 @@ class TasksNav:
                 return TasksNav.STATE["EXECUTION_SUCCESS"]
             elif target == "back location":
                 rospy.loginfo("[INFO] Going back to back location")
-                approach_goal = moveActionGoal()
-                approach_goal.goal_type = moveActionGoal.BACKWARD
-                self.approach_client.send_goal(approach_goal)
-                self.approach_client.wait_for_result()
+                goal = navServGoal()
+                goal.goal_type = moveActionGoal.BACKWARD
+                self.nav_client.send_goal(goal)
+                self.nav_client.wait_for_result()
                 #self.go_place("past location")
                 rospy.loginfo("[SUCCESS] Arrived at back location")
                 return TasksNav.STATE["EXECUTION_SUCCESS"]
@@ -145,42 +147,41 @@ class TasksNav:
             rospy.loginfo("[INFO] Going to pose")
             return TasksNav.STATE["EXECUTION_SUCCESS"]
     
-    def approach_pose(self, target: PointStamped) -> int:
+    def approach_pose(self, target: str) -> int:
         """Action to approach a specific location"""
         if not self.FAKE_TASKS:
-            # transform to base_footprint
-            transformed_point = self.tf_buffer.transform(target, "base_footprint")
-            # calculate angle to face the target
-            angle = math.atan2(transformed_point.point.y, transformed_point.point.x)
-            transformed_target = PoseStamped()
-            transformed_target.header.frame_id = "base_footprint"
-            transformed_target.pose.position.x = 0
-            transformed_target.pose.position.y = 0
-            transformed_target.pose.position.z = 0
-            quaternion = transformations.quaternion_from_euler(0, 0, angle*0.8)
-            transformed_target.pose.orientation.x = quaternion[0]
-            transformed_target.pose.orientation.y = quaternion[1]
-            transformed_target.pose.orientation.z = quaternion[2]
-            transformed_target.pose.orientation.w = quaternion[3]
-            map_target = self.tf_buffer.transform(transformed_target, "map")
-            move_goal = MoveBaseGoal()
-            move_goal.target_pose = map_target
-            self.test_pose_pub.publish(map_target)
-            self.move_base_client.send_goal(move_goal)
-            self.move_base_client.wait_for_result()
+            # # transform to base_footprint
+            # transformed_point = self.tf_buffer.transform(target, "base_footprint")
+            # # calculate angle to face the target
+            # angle = math.atan2(transformed_point.point.y, transformed_point.point.x)
+            # transformed_target = PoseStamped()
+            # transformed_target.header.frame_id = "base_footprint"
+            # transformed_target.pose.position.x = 0
+            # transformed_target.pose.position.y = 0
+            # transformed_target.pose.position.z = 0
+            # quaternion = transformations.quaternion_from_euler(0, 0, angle*0.8)
+            # transformed_target.pose.orientation.x = quaternion[0]
+            # transformed_target.pose.orientation.y = quaternion[1]
+            # transformed_target.pose.orientation.z = quaternion[2]
+            # transformed_target.pose.orientation.w = quaternion[3]
+            # map_target = self.tf_buffer.transform(transformed_target, "map")
+            # move_goal = MoveBaseGoal()
+            # move_goal.target_pose = map_target
+            # self.test_pose_pub.publish(map_target)
+            # self.move_base_client.send_goal(move_goal)
+            # self.move_base_client.wait_for_result()
             
             rospy.loginfo("[INFO] Approaching pose")
-            
-            approach_goal = moveActionGoal()
-            approach_goal.goal_type = moveActionGoal.FORWARD
-            self.approach_client.send_goal(approach_goal)
-            self.approach_client.wait_for_result(rospy.Duration.from_sec(20.0))
-            
+            goal = navServGoal()
+            goal.goal_type = moveActionGoal.FORWARD
+            goal.target_pose = target
+            self.nav_client.send_goal(goal)
+            self.nav_client.wait_for_result(rospy.Duration.from_sec(20.0))
             rospy.loginfo("[SUCCESS] Arrived at pose")
             
             return TasksNav.STATE["EXECUTION_SUCCESS"]
         else:
-            rospy.loginfo("[INFO] Approaching pose")
+            rospy.loginfo("[INFO] Arrived at pose")
             return TasksNav.STATE["EXECUTION_SUCCESS"]
     
     def store_current_location(self) -> int:

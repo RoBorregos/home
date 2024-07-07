@@ -10,6 +10,7 @@ import actionlib
 
 import moveit_commander
 from sensor_msgs.msg import JointState
+from geometry_msgs.msg import PoseStamped
 
 
 ### ROS messages
@@ -45,6 +46,26 @@ MANIPULATION_POSITIONS = {
     
 }
 
+# class ObjectDetected:
+#     def __init__(self, label,
+#                 labelText,
+#                 score,
+#                 ymin,
+#                 xmin,
+#                 ymax,
+#                 xmax,
+#                 point3D):
+#         # This message holds the data of an object detected by vision
+#         label_ = label,
+#         labelText_ = labelText,
+#         score_ = score,
+#         ymin_ = ymin,
+#         xmin_ = xmin,
+#         ymax_ = ymax,
+#         xmax_ = xmax,
+#         point3D_ = point3D,
+
+
 class TasksManipulation:
     """Manager for the manipulation area tasks"""
     STATE = {
@@ -70,8 +91,7 @@ class TasksManipulation:
             rospy.loginfo("[INFO] Waiting for manipulation server")
             self.manipulation_client = actionlib.SimpleActionClient(MANIPULATION_SERVER, manipulationPickAndPlaceAction)
             self.move_arm_client = actionlib.SimpleActionClient(ARM_SERVER, MoveJointAction)
-            self.gripper_service = rospy.ServiceProxy('/gripper_service', Gripper)
-            
+            self.gripper_service = rospy.ServiceProxy('/gripper_service', Gripper)            
             rospy.loginfo("[INFO] Connecting to manipulation_server")
             # if not self.manipulation_client.wait_for_server(timeout=rospy.Duration(10.0)):
             #     rospy.logerr("[SUCCESS] Manipulation server not initialized")
@@ -88,7 +108,6 @@ class TasksManipulation:
                 
             self.OBSERVER = [-1.5700864791870117, -1.1652400493621826, -1.4244275093078613, -6.2831220626831055, 0.3724396228790283, -5.487866401672363, 0.0] ## TO RADIANDS USING PI
             self.NAV_ARM = [-1.5701032876968384, -1.1651480197906494, -1.424232840538025, -6.283036231994629, 0.9078435301780701, -5.487793445587158, 0.0]
-            
 
         rospy.loginfo("[SUCCESS] Manipulation Task Manager initialized")
 
@@ -258,6 +277,7 @@ class TasksManipulation:
             return TasksManipulation.STATE["EXECUTION_SUCCESS"]
         else:
             return TasksManipulation.STATE["EXECUTION_SUCCESS"]
+
 
 if __name__ == "__main__":
     try:

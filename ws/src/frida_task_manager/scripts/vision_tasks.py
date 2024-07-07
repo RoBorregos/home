@@ -10,14 +10,18 @@ import actionlib
 
 ### ROS messages
 from std_msgs.msg import String
+from geometry_msgs.msg import PointStamped
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from geometry_msgs.msg import Pose, PoseStamped, Point, Quaternion
 from frida_vision_interfaces.msg import DetectPointingObjectAction, DetectPointingObjectGoal, DetectPointingObjectResult, DetectPointingObjectFeedback
-from frida_manipulation_interfaces.msg import objectDetectionArray, objectDetection
-from frida_vision_interfaces.srv import Pointing, NewHost, NewHostResponse, FindSeat
+from frida_vision_interfaces.msg import MoondreamFromCameraAction, MoondreamFromCameraGoal, MoondreamFromCameraResult, MoondreamFromCameraFeedback
+from frida_manipulation_interfaces.msg import objectDetection, objectDetectionArray
+from frida_vision_interfaces.srv import Pointing, NewHost, NewHostResponse, FindSeat, ShelfDetections
 from std_srvs.srv import SetBool
 #from frida_vision_interfaces.srv import ShelfDetection
-
+import random
 import math
 
 DIRECTION_BAG_SERVER = "/vision/get_bag_direction"
@@ -31,6 +35,29 @@ DETECTION_TRIES = 3
 STORE_FACE_SERVICE = "/vision/new_name"
 CHECK_PERSON = "/vision/check_person"
 FIND_TOPIC = "/vision/find_seat"
+POSITION_TOPIC = "/person_pointing"
+SHELF_SERVER = "/shelf_detector"
+DETECTION_TOPIC = "/detections"
+ROOM_DETECTIONS_TOPIC = "/vision/room_detections"
+IMAGE_TOPIC = "/zed2/zed_node/rgb/image_rect_color"
+MOONDREAM_FROM_CAMERA_AS = "/vision/moondream_from_camera"
+
+################################################################
+# MOONDREAM PROMPTS
+################################################################
+
+SHELF_PROMPT = "Using only one word, categorize the objects in this shelf"
+# Another option with more specific categories
+# SHELF_PROMPT = "Using only one word, categorize the objects in this shelf. Answer with 'food', 'tools' or 'toys'"
+DRINK_PROMPT = "Answering only 'yes' or 'no', is the person in the image holding a drink?"
+
+class Person:
+    xmin = 0
+    ymin = 0
+    xmax = 0
+    ymax = 0
+    Point3D = PointStamped()
+
 
 class TasksVision:
     """Class to manage the navigation tasks"""
@@ -40,7 +67,7 @@ class TasksVision:
         "EXECUTION_SUCCESS": 1
     }
 
-    AREA_TASKS = ["get_bag", "wait", "save"]
+    AREA_TASKS = ["get_bag", "wait", "save", "get_shelves"]
 
     def __init__(self, fake = False) -> None:
         
@@ -51,24 +78,33 @@ class TasksVision:
             "name": "",
             "PoseStamped": PoseStamped()
         }
+
+        self.no_objects_str = "No objects detected"
+        self.n_detections = 5
+        self.detected_objects = None
         
         if not self.FAKE_TASKS:
             rospy.loginfo("[INFO] Waiting for bag server")
             if POINTING_ACTIVE:
                 self.bag_client = actionlib.SimpleActionClient(POINTING_BAG_SERVER, DetectPointingObjectAction)
-                if not self.bag_client.wait_for_server(timeout=rospy.Duration(5.0)):
+                if not self.bag_client.wait_for_server(timeout=rospy.Duration(3.0)):
                     rospy.logerr("Bag server not initialized")
             elif CARRY:
-                self.bag_direction_client = rospy.ServiceProxy('/person_pointing', Pointing)
-                if not self.bag_direction_client.wait_for_service(timeout=rospy.Duration(5.0)):
+                self.bag_direction_client = rospy.ServiceProxy(POSITION_TOPIC, Pointing)
+                if not self.bag_direction_client.wait_for_service(timeout=rospy.Duration(3.0)):
                     rospy.logerr("Bag direction service not initialized")
-            # else:
-                # self.shelf_client = rospy.ServiceProxy('/shelf_detector', ShelfDetection)
-                # if not self.shelf_client.wait_for_service(timeout=rospy.Duration(5.0)):
-                #     rospy.logerr("Shelf detection service not initialized")
-
+            else:
+                self.shelf_client = rospy.ServiceProxy(SHELF_SERVER, ShelfDetections)
+                if not self.shelf_client.wait_for_service(timeout=rospy.Duration(3.0)):
+                    rospy.logerr("Shelf detection service not initialized")
+            self.cv_bridge = CvBridge()
             self.save_name_call = rospy.ServiceProxy(STORE_FACE_SERVICE, NewHost)
-            self.save_name_call.wait_for_service(timeout=rospy.Duration(10.0))
+            if not self.save_name_call.wait_for_service(timeout=rospy.Duration(3.0)):
+                rospy.logerr("Save name service not initialized")
+            self.moondream_from_camera_client = actionlib.SimpleActionClient(MOONDREAM_FROM_CAMERA_AS, MoondreamFromCameraAction)
+            if not self.moondream_from_camera_client.wait_for_server(timeout=rospy.Duration(3.0)):
+                rospy.logerr("Moondream from camera server not initialized")
+            
         else:
             rospy.loginfo("Fake Vision Task Manager initialized")
         
@@ -178,7 +214,7 @@ class TasksVision:
         for i in range(DETECTION_TRIES):
             rospy.loginfo("[INFO] Getting Detections")
             try: 
-                detections = rospy.wait_for_message("/detections", objectDetectionArray, timeout=10.0)
+                detections = rospy.wait_for_message(DETECTION_TOPIC, objectDetectionArray, timeout=10.0)
                 closest_distance = 10000
                 closest_index = 0
                 for i, detection in enumerate(detections.detections):
@@ -192,7 +228,25 @@ class TasksVision:
                 return detections.detections[closest_index].labelText
                     
             except rospy.exceptions.ROSException:
-                print("No objects detected")
+                print(self.no_objects_str)
+            
+        return self.no_objects_str
+
+    def get_objects(self) -> list:
+        """Method to get the labels of the detected objects"""
+        obj_labels = []
+        for i in range(5):
+            self.detected_objects = rospy.wait_for_message(DETECTION_TOPIC, objectDetectionArray)
+            for obj in self.detected_objects.objects:
+                obj_labels.append(obj.labelText)
+
+        obj_labels = list(set(obj_labels))
+            
+        return obj_labels
+    
+    ################################################################
+    # STORING GROCERIES
+    ################################################################
         
     def get_shelves(self) -> list:
         """Method to get the shelves"""
@@ -200,26 +254,49 @@ class TasksVision:
         if self.FAKE_TASKS:
             newShelve = {}
             newShelve["shelve_number"] = 1
-            newShelve["category"] = "sample_category1"
-            newShelve["height"] = 0.30
+            newShelve["objects"] = ["sample_object1", "sample_object2", "sample_object3"]
+            newShelve["height"] = 0.40
             newShelve2 = {}
             newShelve2["shelve_number"] = 2
-            newShelve2["category"] = "sample_category2"
-            newShelve2["height"] = 0.40
+            newShelve2["objects"] = ["sample_object1", "sample_object2", "sample_object3"]
+            newShelve2["height"] = 0.70
+            # newShelve3 = {}
+            # newShelve3["shelve_number"] = 3
+            # newShelve3["objects"] = ["sample_object1", "sample_object2", "sample_object3"]
+            # newShelve3["height"] = 1.0
+            
             return [newShelve, newShelve2]
         else:
             shelf_result = self.shelf_client(True)
             shelf = shelf_result.shelf
             shelf_list = []
+            
             for level in shelf.levels:
                 newShelve = {}
-                # newShelve["shelve_number"] = level.label
+                newShelve["shelve_number"] = level.label
                 newShelve["objects"] = level.objects
                 newShelve["height"] = level.height
                 shelf_list.append(newShelve)
             return shelf_list
         return []
     
+    def get_shelve_moondream(self) -> str:
+        """Method to get the shelve category using Moondream"""
+        if self.FAKE_TASKS:
+            return random.choice(["food", "tools", "toys"])
+        else:
+            goal = MoondreamFromCameraGoal(camera_topic=IMAGE_TOPIC, prompt=SHELF_PROMPT)
+            rospy.loginfo("Moondream sent goal for shelf recognition: ", goal)
+            self.moondream_from_camera_client.send_goal(goal)
+            self.moondream_from_camera_client.wait_for_result()
+            result = self.moondream_from_camera_client.get_result()
+            rospy.loginfo("Moondream result: ", result)
+            return result.response
+    
+    ################################################################
+    # RECEPTIONIST
+    ################################################################
+
     def save_face_name(self, name: str) -> int:
         """Method to save the face name"""
         if self.FAKE_TASKS:
