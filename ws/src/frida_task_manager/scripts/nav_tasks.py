@@ -81,6 +81,8 @@ class TasksNav:
             return self.stop_follow_person()
         if command == "approach":
             return self.approach_pose(target)
+        if command == "deproach":
+            return self.deproach()
 
         return TasksNav.STATE["EXECUTION_ERROR"]
 
@@ -162,7 +164,22 @@ class TasksNav:
         else:
             rospy.loginfo("[INFO] Arrived at pose")
             return TasksNav.STATE["EXECUTION_SUCCESS"]
-    
+
+    def deproach(self) -> int:
+        """Action to deproach a specific location"""
+        if not self.FAKE_TASKS:
+            rospy.loginfo("[INFO] Deproaching pose")
+            goal = navServGoal()
+            goal.goal_type = moveActionGoal.BACKWARD
+            self.nav_client.send_goal(goal)
+            self.nav_client.wait_for_result(rospy.Duration.from_sec(20.0))
+            rospy.loginfo("[SUCCESS] Deproached pose")
+            
+            return TasksNav.STATE["EXECUTION_SUCCESS"]
+        else:
+            rospy.loginfo("[INFO] Deproached pose")
+            return TasksNav.STATE["EXECUTION_SUCCESS"]
+
     def store_current_location(self) -> int:
         """Method to retrieve the current location of the robot"""
         if not self.FAKE_TASKS:

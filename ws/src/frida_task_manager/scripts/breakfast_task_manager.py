@@ -49,7 +49,7 @@ class TaskManagerServer:
     }
 
     COMMANDS_CATEGORY = {
-        "nav" : ["go", "follow", "stop", "approach", "remember"],
+        "nav" : ["go", "follow", "stop", "approach", "remember", "deproach"],
         "manipulation" : ["pick", "place", "grasp", "give", "open", "close", "pour"],
         "hri" : ["ask", "interact", "feedback"],
         "vision" : ["find", "identify", "count"]
@@ -79,10 +79,21 @@ class TaskManagerServer:
         self.perceived_information = ""
 
         self.current_queue = [
+            Command(action="go", complement="kitchen pre_table"),
+            Command(action="approach", complement="kitchen table"),
             Command(action="pick", complement="zucaritas"),
+            Command(action="deproach"),
+            Command(action="go", complement="breakfast pre_table"),
+            Command(action="approach", complement="breakfast table"),
             Command(action="pour", complement="zucaritas"),
             Command(action="place", complement="zucaritas"),
+            Command(action="deproach"),
+            Command(action="go", complement="kitchen pre_table"),
+            Command(action="approach", complement="kitchen table"),
             Command(action="pick", complement="cocacola"),
+            Command(action="deproach"),
+            Command(action="go", complement="breakfast pre_table"),
+            Command(action="approach", complement="breakfast table"),
             Command(action="pour", complement="cocacola"),
             Command(action="place", complement="cocacola")
         ]
