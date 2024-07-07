@@ -224,6 +224,25 @@ class TasksNav:
         else:
             rospy.loginfo("[SUCCESS] Stopping Following person")
             return TasksNav.STATE["EXECUTION_SUCCESS"]
+        
+    #############################
+    ## STICKLER
+    #############################
+    
+    def get_current_room(self) -> str:
+        """ Method to get the robot's current room """
+        if self.FAKE_TASKS:
+            return "kitchen"
+        # Get the current pose of the robot
+        return "kitchen"
+    
+    def get_point_room(self, point: PointStamped) -> str:
+        """ Method to get the room of a specific point """
+        if self.FAKE_TASKS:
+            return "kitchen"
+        # Get the room of the point
+        return "kitchen"
+        
 
     def cancel_command(self) -> None:
         """Method to cancel the current command"""

@@ -322,7 +322,7 @@ class TasksVision:
                 people.append(person)
         return people
 
-    def check_drink_rule(self, person: Person) -> bool:
+    def check_has_drink(self, person: Person) -> bool:
         """Method to check if the person is holding a drink"""
         if self.FAKE_TASKS:
             return random.choice([True, False])
@@ -336,7 +336,7 @@ class TasksVision:
             rospy.loginfo("Moondream result: ", result)
             return True if (str(result.response).lower() == "yes") else False
     
-    def check_shoes_rule(self, person: Person) -> bool:
+    def check_has_shoes(self, person: Person) -> bool:
         """Method to check if the person is wearing shoes"""
         if self.FAKE_TASKS:
             return random.choice([True, False])
@@ -349,6 +349,13 @@ class TasksVision:
             result = self.moondream_from_camera_client.get_result()
             rospy.loginfo("Moondream result: ", result)
             return True if (str(result.response).lower() == "yes") else False
+    
+    def check_trash_rule(self) -> bool:
+        """Method to check if the trash rule is being followed"""
+        if self.FAKE_TASKS:
+            return random.choice([True, False])
+        else:
+            return False
 
     def cancel_command(self) -> None:
         """Method to cancel the current command"""
