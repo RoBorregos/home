@@ -10,14 +10,18 @@ import actionlib
 
 ### ROS messages
 from std_msgs.msg import String
+from geometry_msgs.msg import PointStamped
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from geometry_msgs.msg import Pose, PoseStamped, Point, Quaternion
 from frida_vision_interfaces.msg import DetectPointingObjectAction, DetectPointingObjectGoal, DetectPointingObjectResult, DetectPointingObjectFeedback
-from frida_manipulation_interfaces.msg import objectDetectionArray, objectDetection
-from frida_vision_interfaces.srv import Pointing, NewHost, NewHostResponse, FindSeat
+from frida_vision_interfaces.msg import MoondreamFromCameraAction, MoondreamFromCameraGoal, MoondreamFromCameraResult, MoondreamFromCameraFeedback
+from frida_manipulation_interfaces.msg import objectDetection, objectDetectionArray
+from frida_vision_interfaces.srv import Pointing, NewHost, NewHostResponse, FindSeat, ShelfDetections
 from std_srvs.srv import SetBool
 #from frida_vision_interfaces.srv import ShelfDetection
-
+import random
 import math
 
 DIRECTION_BAG_SERVER = "/vision/get_bag_direction"
@@ -31,6 +35,34 @@ DETECTION_TRIES = 3
 STORE_FACE_SERVICE = "/vision/new_name"
 CHECK_PERSON = "/vision/check_person"
 FIND_TOPIC = "/vision/find_seat"
+
+DETECTION_TRIES = 3
+STORE_FACE_SERVICE = "/new_name"
+CHECK_PERSON = "/check_person"
+FIND_TOPIC = "/find_seat"
+POSITION_TOPIC = "/person_pointing"
+SHELF_SERVER = "/shelf_detector"
+DETECTION_TOPIC = "/detections"
+ROOM_DETECTIONS_TOPIC = "/vision/room_detections"
+IMAGE_TOPIC = "/zed2/zed_node/rgb/image_rect_color"
+MOONDREAM_FROM_CAMERA_AS = "/vision/moondream_from_camera"
+
+################################################################
+# MOONDREAM PROMPTS
+################################################################
+
+SHELF_PROMPT = "Using only one word, categorize the objects in this shelf"
+# Another option with more specific categories
+# SHELF_PROMPT = "Using only one word, categorize the objects in this shelf. Answer with 'food', 'tools' or 'toys'"
+DRINK_PROMPT = "Answering only 'yes' or 'no', is the person in the image holding a drink?"
+SHOES_PROMPT = "Answering only 'yes' or 'no', is the person in the image wearing shoes?"
+
+class Person:
+    xmin = 0
+    ymin = 0
+    xmax = 0
+    ymax = 0
+    Point3D = PointStamped()
 
 class TasksVision:
     """Class to manage the navigation tasks"""
@@ -67,8 +99,14 @@ class TasksVision:
                 # if not self.shelf_client.wait_for_service(timeout=rospy.Duration(5.0)):
                 #     rospy.logerr("Shelf detection service not initialized")
 
+            self.cv_bridge = CvBridge()
             self.save_name_call = rospy.ServiceProxy(STORE_FACE_SERVICE, NewHost)
-            self.save_name_call.wait_for_service(timeout=rospy.Duration(10.0))
+            if not self.save_name_call.wait_for_service(timeout=rospy.Duration(3.0)):
+                rospy.logerr("Save name service not initialized")
+            self.moondream_from_camera_client = actionlib.SimpleActionClient(MOONDREAM_FROM_CAMERA_AS, MoondreamFromCameraAction)
+            if not self.moondream_from_camera_client.wait_for_server(timeout=rospy.Duration(3.0)):
+                rospy.logerr("Moondream from camera server not initialized")
+            
         else:
             rospy.loginfo("Fake Vision Task Manager initialized")
         
@@ -264,6 +302,53 @@ class TasksVision:
         except rospy.ServiceException:
             rospy.logerr("Service call find_seat failed")
             return 300
+    
+     ################################################################
+    # STICKLER FOR THE RULES
+    ################################################################
+    
+    def get_people(self, in_room = False) -> list:
+        """ Method to get the people detected in the image """
+        people = []
+        detections = rospy.wait_for_message(ROOM_DETECTIONS_TOPIC if in_room else DETECTION_TOPIC, objectDetectionArray)
+        for detection in detections.detections:
+            if detection.labelText == "person":
+                person = Person()
+                person.xmin = detection.xmin
+                person.ymin = detection.ymin
+                person.xmax = detection.xmax
+                person.ymax = detection.ymax
+                person.Point3D = detection.point3D
+                people.append(person)
+        return people
+
+    def check_drink_rule(self, person: Person) -> bool:
+        """Method to check if the person is holding a drink"""
+        if self.FAKE_TASKS:
+            return random.choice([True, False])
+        else:
+            x1, y1, x2, y2 = person.xmin, person.ymin, person.xmax, person.ymax
+            goal = MoondreamFromCameraGoal(camera_topic=IMAGE_TOPIC, roi_x1=x1, roi_y1=y1, roi_x2=x2, roi_y2=y2, prompt=DRINK_PROMPT)
+            rospy.loginfo("Moondream sent goal to check for drink: ", goal)
+            self.moondream_from_camera_client.send_goal(goal)
+            self.moondream_from_camera_client.wait_for_result()
+            result = self.moondream_from_camera_client.get_result()
+            rospy.loginfo("Moondream result: ", result)
+            return True if (str(result.response).lower() == "yes") else False
+    
+    def check_shoes_rule(self, person: Person) -> bool:
+        """Method to check if the person is wearing shoes"""
+        if self.FAKE_TASKS:
+            return random.choice([True, False])
+        else:
+            x1, y1, x2, y2 = person.xmin, person.ymin, person.xmax, person.ymax
+            goal = MoondreamFromCameraGoal(camera_topic=IMAGE_TOPIC, roi_x1=x1, roi_y1=y1, roi_x2=x2, roi_y2=y2, prompt=SHOES_PROMPT)
+            rospy.loginfo("Moondream sent goal to check for shoes: ", goal)
+            self.moondream_from_camera_client.send_goal(goal)
+            self.moondream_from_camera_client.wait_for_result()
+            result = self.moondream_from_camera_client.get_result()
+            rospy.loginfo("Moondream result: ", result)
+            return True if (str(result.response).lower() == "yes") else False
 
     def cancel_command(self) -> None:
         """Method to cancel the current command"""
