@@ -9,6 +9,11 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   move_base_msgs
   geometry_msgs
+  moveit_msgs
+  moveit_core
+  moveit_ros_planning
+  moveit_ros_planning_interface
+  moveit_ros_perception
 )
 
 ## Generate messages in the 'msg' folder

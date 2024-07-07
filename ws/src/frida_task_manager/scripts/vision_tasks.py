@@ -24,17 +24,17 @@ from std_srvs.srv import SetBool
 import random
 import math
 
-DIRECTION_BAG_SERVER = "/get_bag_direction"
-POINTING_BAG_SERVER = "/detectPointingObject"
+DIRECTION_BAG_SERVER = "/vision/get_bag_direction"
+POINTING_BAG_SERVER = "/vision/detectPointingObject"
 
 POINTING_ACTIVE = False
-CARRY = True
+CARRY = False
 
 
 DETECTION_TRIES = 3
-STORE_FACE_SERVICE = "/new_name"
-CHECK_PERSON = "/check_person"
-FIND_TOPIC = "/find_seat"
+STORE_FACE_SERVICE = "/vision/new_name"
+CHECK_PERSON = "/vision/check_person"
+FIND_TOPIC = "/vision/find_seat"
 POSITION_TOPIC = "/person_pointing"
 SHELF_SERVER = "/shelf_detector"
 DETECTION_TOPIC = "/detections"
@@ -57,6 +57,7 @@ class Person:
     xmax = 0
     ymax = 0
     Point3D = PointStamped()
+
 
 class TasksVision:
     """Class to manage the navigation tasks"""
