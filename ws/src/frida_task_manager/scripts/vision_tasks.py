@@ -50,6 +50,8 @@ SHELF_PROMPT = "Using only one word, categorize the objects in this shelf"
 # Another option with more specific categories
 # SHELF_PROMPT = "Using only one word, categorize the objects in this shelf. Answer with 'food', 'tools' or 'toys'"
 DRINK_PROMPT = "Answering only 'yes' or 'no', is the person in the image holding a drink?"
+PERSON_CHARACTERISTIC_PROMPT = "Answering only 'yes' or 'no', is the person in the image {characteristic}?"
+OBJECT_CHARACTERISTIC_PROMPT = "Which is the {characteristic} {object} in the image? Describe it in detail. If there is no object, say: I don't see any object."
 
 class Person:
     xmin = 0
@@ -69,7 +71,7 @@ class TasksVision:
         "EXECUTION_SUCCESS": 1
     }
 
-    AREA_TASKS = ["get_bag", "wait", "save", "get_shelves"]
+    AREA_TASKS = ["get_bag", "wait", "save", "get_shelves", "count"]
 
     def __init__(self, fake = False) -> None:
         
@@ -138,6 +140,8 @@ class TasksVision:
             self.check_person()
         elif command == "find_seat":
             self.find_seat()
+        elif command == "identify":
+            self.identify(target, info)
         elif command == "cancel":
             self.cancel_command()
         else:
@@ -343,6 +347,64 @@ class TasksVision:
         except rospy.ServiceException:
             rospy.logerr("Service call find_seat failed")
             return 300
+    
+    def get_people(self, in_room = False) -> list:
+        """ Method to get the people detected in the image """
+        if self.FAKE_TASKS:
+            return [Person(), Person()]
+        people = []
+        detections = rospy.wait_for_message(ROOM_DETECTIONS_TOPIC if in_room else DETECTION_TOPIC, objectDetectionArray)
+        for detection in detections.detections:
+            if detection.labelText == "person":
+                person = Person()
+                person.xmin = detection.xmin
+                person.ymin = detection.ymin
+                person.xmax = detection.xmax
+                person.ymax = detection.ymax
+                person.Point3D = detection.point3D
+                people.append(person)
+        return people
+        
+    ################################################################
+    # GPSR
+    ################################################################
+    
+    def identify(self, target, characteristic) -> bool:
+        """ Method to identify a person or object """
+        """ This method varies depending on the target and characteristic """
+        """ If it is a person, it is necessary to save the person info like point3D to use it if needed to approach them """
+        print("Identifying: ", target, characteristic)
+        if target == "person":
+            self.people_detected = self.get_people()
+            if len(self.people_detected) == 0:
+                return False
+            for person in self.people_detected:
+                prompt = PERSON_CHARACTERISTIC_PROMPT.format(characteristic=characteristic)
+                print("Checking for person: ", person)
+                print(prompt)
+                if self.FAKE_TASKS:
+                    return True
+                moondream_result = self.moondream_from_camera_client.send_goal(MoondreamFromCameraGoal(camera_topic=IMAGE_TOPIC, prompt=prompt))
+                if moondream_result.response.lower() == "yes":
+                    self.person_info = person
+                    return True
+            print("No person with the characteristic found")
+            return False
+        else:
+            prompt = OBJECT_CHARACTERISTIC_PROMPT.format(characteristic=characteristic, object=target)
+            print("Checking for object: ", target, " with characteristic: ", characteristic)
+            print("Prompt: ", prompt)
+            if self.FAKE_TASKS:
+                return True
+            moondream_result = self.moondream_from_camera_client.send_goal(MoondreamFromCameraGoal(camera_topic=IMAGE_TOPIC, prompt=prompt))
+            self.identified_object_description = moondream_result.response
+            return True
+        
+            
+            
+                
+            
+    def identify_characteristic(self, characteristic) -> str:
 
     def cancel_command(self) -> None:
         """Method to cancel the current command"""
