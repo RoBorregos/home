@@ -86,7 +86,6 @@ class TasksHRI:
         # elif command == "analyze_objects":
         #     return self.get_objects_category(perceived_information.split(","))
         
-
         goal = ConversateGoal()
         goal.request = composed_request
         goal.wait = 0 if command == "feedback" else 1
@@ -151,12 +150,6 @@ class TasksHRI:
 
     def speak(self, text: str, wait: bool = True) -> None:
         """Method to publish directly text to the speech node"""
-<<<<<<< HEAD
-        if wait:
-            self.speak_client(text)
-        else:
-            self.pub_speak.publish(text)
-=======
         #self.pub_speak.publish(text)
         if not self.FAKE_TASK:
             self.speak_client(text)
@@ -177,7 +170,6 @@ class TasksHRI:
             return "sample_category_" + str(self.fake_index + 1)
         response = self.object_category_client(items=[object_name])
         return response.category
->>>>>>> develop
 
 if __name__ == "__main__":
     try:
