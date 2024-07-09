@@ -133,10 +133,16 @@ class TaskManagerServer:
                 self.subtask_manager["hri"].speak("I couldn't reach the goal")
 
         elif command.action in ("pick", "place", "pour"):
-            #if self.subtask_manager[
+            if self.subtask_manager["manipulation"].execute_command(
+                command.action, command.complement, command.characteristic
+            ) == STATES["EXECUTION_FAILED"]:
+                self.subtask_manager["hri"].speak("I couldn't execute the manipulation task")
         
-
-
+        elif command.action in self.COMMANDS_CATEGORY["vision"]:
+            task_result = self.subtask_manager["vision"].execute_command(
+                command.action, command.complement, command.characteristic
+            )
+        
         if task_result == -1:
             rospy.logerr("Error in task execution")
             return TaskManagerServer.STATE_ENUM["ERROR"]

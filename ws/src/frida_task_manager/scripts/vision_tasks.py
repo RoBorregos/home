@@ -87,6 +87,9 @@ class TasksVision:
         self.n_detections = 5
         self.detected_objects = None
         
+        self.identified_object_description = None
+        self.identified_person_info = None
+        
         if not self.FAKE_TASKS:
             rospy.loginfo("[INFO] Waiting for bag server")
             if POINTING_ACTIVE:
@@ -386,7 +389,7 @@ class TasksVision:
                     return True
                 moondream_result = self.moondream_from_camera_client.send_goal(MoondreamFromCameraGoal(camera_topic=IMAGE_TOPIC, prompt=prompt))
                 if moondream_result.response.lower() == "yes":
-                    self.person_info = person
+                    self.identified_object_info = person
                     return True
             print("No person with the characteristic found")
             return False
@@ -399,12 +402,11 @@ class TasksVision:
             moondream_result = self.moondream_from_camera_client.send_goal(MoondreamFromCameraGoal(camera_topic=IMAGE_TOPIC, prompt=prompt))
             self.identified_object_description = moondream_result.response
             return True
-        
-            
-            
-                
-            
-    def identify_characteristic(self, characteristic) -> str:
+    
+    def find_person(target):
+        pass
+    def find(target):
+        pass
 
     def cancel_command(self) -> None:
         """Method to cancel the current command"""
