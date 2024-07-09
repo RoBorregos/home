@@ -37,7 +37,7 @@ CHECK_PERSON = "/vision/check_person"
 FIND_TOPIC = "/vision/find_seat"
 POSITION_TOPIC = "/person_pointing"
 SHELF_SERVER = "/shelf_detector"
-DETECTION_TOPIC = "/detections"
+DETECTION_TOPIC = "/multi_detections"
 ROOM_DETECTIONS_TOPIC = "/vision/room_detections"
 IMAGE_TOPIC = "/zed2/zed_node/rgb/image_rect_color"
 MOONDREAM_FROM_CAMERA_AS = "/vision/moondream_from_camera"
@@ -50,6 +50,7 @@ SHELF_PROMPT = "Using only one word, categorize the objects in this shelf"
 # Another option with more specific categories
 # SHELF_PROMPT = "Using only one word, categorize the objects in this shelf. Answer with 'food', 'tools' or 'toys'"
 DRINK_PROMPT = "Answering only 'yes' or 'no', is the person in the image holding a drink?"
+DESCRIPTION_PROMPT = "Give me a description of the person in the image. Do not use genders, races, skin tone. Only describe the person's hair, clothes and accesories. Answer in the format: 'The person has hair color, clothes and accesories'"
 
 class Person:
     xmin = 0
@@ -82,25 +83,26 @@ class TasksVision:
         self.no_objects_str = "No objects detected"
         self.n_detections = 5
         self.detected_objects = None
+        self.guest_description = ["", "", ""]
         
         if not self.FAKE_TASKS:
             rospy.loginfo("[INFO] Waiting for bag server")
-            if POINTING_ACTIVE:
-                self.bag_client = actionlib.SimpleActionClient(POINTING_BAG_SERVER, DetectPointingObjectAction)
-                if not self.bag_client.wait_for_server(timeout=rospy.Duration(3.0)):
-                    rospy.logerr("Bag server not initialized")
-            elif CARRY:
-                self.bag_direction_client = rospy.ServiceProxy(POSITION_TOPIC, Pointing)
-                if not self.bag_direction_client.wait_for_service(timeout=rospy.Duration(3.0)):
-                    rospy.logerr("Bag direction service not initialized")
-            else:
-                self.shelf_client = rospy.ServiceProxy(SHELF_SERVER, ShelfDetections)
-                if not self.shelf_client.wait_for_service(timeout=rospy.Duration(3.0)):
-                    rospy.logerr("Shelf detection service not initialized")
+            # if POINTING_ACTIVE:
+            #     self.bag_client = actionlib.SimpleActionClient(POINTING_BAG_SERVER, DetectPointingObjectAction)
+            #     if not self.bag_client.wait_for_server(timeout=rospy.Duration(3.0)):
+            #         rospy.logerr("Bag server not initialized")
+            # elif CARRY:
+            #     self.bag_direction_client = rospy.ServiceProxy(POSITION_TOPIC, Pointing)
+            #     if not self.bag_direction_client.wait_for_service(timeout=rospy.Duration(3.0)):
+            #         rospy.logerr("Bag direction service not initialized")
+            # else:
+            #     self.shelf_client = rospy.ServiceProxy(SHELF_SERVER, ShelfDetections)
+            #     if not self.shelf_client.wait_for_service(timeout=rospy.Duration(3.0)):
+            #         rospy.logerr("Shelf detection service not initialized")
             self.cv_bridge = CvBridge()
-            self.save_name_call = rospy.ServiceProxy(STORE_FACE_SERVICE, NewHost)
-            if not self.save_name_call.wait_for_service(timeout=rospy.Duration(3.0)):
-                rospy.logerr("Save name service not initialized")
+            # self.save_name_call = rospy.ServiceProxy(STORE_FACE_SERVICE, NewHost)
+            # if not self.save_name_call.wait_for_service(timeout=rospy.Duration(3.0)):
+            #     rospy.logerr("Save name service not initialized")
             self.moondream_from_camera_client = actionlib.SimpleActionClient(MOONDREAM_FROM_CAMERA_AS, MoondreamFromCameraAction)
             if not self.moondream_from_camera_client.wait_for_server(timeout=rospy.Duration(3.0)):
                 rospy.logerr("Moondream from camera server not initialized")
@@ -341,6 +343,64 @@ class TasksVision:
         except rospy.ServiceException:
             rospy.logerr("Service call find_seat failed")
             return 300
+        
+    def get_people(self, in_room = False) -> list:
+        """ Method to get the people detected in the image """
+        if self.FAKE_TASKS:
+            return [Person(), Person()]
+        people = []
+        print("Waiting for detections")
+        detections = rospy.wait_for_message(ROOM_DETECTIONS_TOPIC if in_room else DETECTION_TOPIC, objectDetectionArray)
+        for detection in detections.detections:
+            if detection.labelText == "person":
+                person = Person()
+                person.xmin = detection.xmin
+                person.ymin = detection.ymin
+                person.xmax = detection.xmax
+                person.ymax = detection.ymax
+                person.Point3D = detection.point3D
+                people.append(person)
+        return people
+    
+    def analyze_guest(self, guest_id: int) -> str:
+        """Method to get a guest description using moondream"""
+        if self.FAKE_TASKS:
+            self.guest_description[guest_id] = "The person has a red shirt and glasses, they are smiling"
+            return "The person has a red shirt and glasses, they are smiling"
+        
+        rospy.loginfo("Checking for people in the image")
+        people = self.get_people()
+        rospy.loginfo(f"Found {len(people)} people in the image")
+        closest_person_id = -1
+        closest_distance = 10000
+        for i, person in enumerate(people):
+            distance = math.sqrt(person.Point3D.point.x**2 + person.Point3D.point.y**2 + person.Point3D.point.z**2)
+            if distance < closest_distance:
+                closest_distance = distance
+                closest_person_id = i
+        if closest_person_id == -1:
+            return ""
+        
+        rospy.loginfo("Sending Moondream goal to describe person in image")
+        rospy.loginfo(f"Person coordinates: {people[closest_person_id].xmin}, {people[closest_person_id].ymin}, {people[closest_person_id].xmax}, {people[closest_person_id].ymax}")
+        self.moondream_from_camera_client.send_goal(MoondreamFromCameraGoal(camera_topic=IMAGE_TOPIC, prompt=DESCRIPTION_PROMPT, roi_x1=people[closest_person_id].xmin, roi_y1=people[closest_person_id].ymin, roi_x2=people[closest_person_id].xmax, roi_y2=people[closest_person_id].ymax)) 
+        self.moondream_from_camera_client.wait_for_result()
+        result = self.moondream_from_camera_client.get_result()
+        
+        if "the person in the image" in result.response.lower():
+            print("Cut answer")
+            result.response = result.response.lower().replace("the person in the image", "The person")
+        elif "a person" in result.response.lower():
+            print("Cut answer")
+            result.response = result.response.lower().replace("A person", "The person is")
+        self.guest_description[guest_id] = result.response
+        
+        return result.response
+        
+    
+    def get_guest_description(self, guest_id: int) -> str:
+        """Method to get the guest description stored"""
+        return self.guest_description[guest_id]
 
     def cancel_command(self) -> None:
         """Method to cancel the current command"""
