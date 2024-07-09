@@ -121,8 +121,6 @@ class TaskManagerServer:
                 command.action, command.complement, self.perceived_information
             )
 
-
-
         if command.action in ("interact", "ask"):
             task_result = self.subtask_manager["hri"].execute_command(
                 command.action, command.complement, self.perceived_information
@@ -137,6 +135,11 @@ class TaskManagerServer:
                 command.action, command.complement, command.characteristic
             ) == STATES["EXECUTION_FAILED"]:
                 self.subtask_manager["hri"].speak("I couldn't execute the manipulation task")
+        
+        elif command.action in ("give"):
+            self.subtask_manager["hri"].speak("I'm going to give you the object, please come in front of me")
+            if self.subtask_manager["vision"].wait_for_person():
+                self.subtask_manager["manipulation"].open_gripper()
         
         elif command.action in self.COMMANDS_CATEGORY["vision"]:
             task_result = self.subtask_manager["vision"].execute_command(

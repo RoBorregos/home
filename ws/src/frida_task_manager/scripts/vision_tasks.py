@@ -407,6 +407,18 @@ class TasksVision:
         pass
     def find(target):
         pass
+    
+    def wait_for_person():
+        start_time = rospy.Time.now()
+        while True:
+            detections = rospy.wait_for_message(DETECTION_TOPIC, objectDetectionArray)
+            for detection in detections.detections:
+                if detection.labelText == "person":
+                    distance = math.sqrt(detection.point3D.point.x**2 + detection.point3D.point.y**2 + detection.point3D.point.z**2)
+                    if distance < 2:
+                        return True
+            if rospy.Time.now() - start_time > rospy.Duration(60):
+                return False
 
     def cancel_command(self) -> None:
         """Method to cancel the current command"""
