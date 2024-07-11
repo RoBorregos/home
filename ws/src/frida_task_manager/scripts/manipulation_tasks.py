@@ -26,6 +26,14 @@ ARM_SERVER = "/arm_joints_as"
 PLACE_TARGET = -5
 POUR_TARGET = -10
 
+# For Storing Groceries
+# Constants
+ARM_MAX_HEIGHT = 1.3
+ARM_MIN_HEIGHT = 0.9
+ARM_MAX_ANGLE = 45
+ARM_MIN_ANGLE = -45
+DISTANCE_TO_SHELF = 0.5
+
 
 # joints are -90, -70, -65, 0, 15, 45 in radians
 OBSERVE_JOINT_POSITION = [-1.57, -1.22, -1.13, 0.0, 0.12, 0.78]
@@ -261,6 +269,33 @@ class TasksManipulation:
         self.arm_group.stop()
         if enable_octomap:
             self.toggle_octomap(True)
+    
+    def get_height_angle_for_shelve(target_shelf_height):
+        def find_angle_from_height(height):
+            return (height - ARM_MIN_HEIGHT) / (ARM_MAX_HEIGHT - ARM_MIN_HEIGHT) * (ARM_MAX_ANGLE - ARM_MIN_ANGLE) + ARM_MIN_ANGLE
+        h_step = 0.01
+        curr_h = ARM_MIN_HEIGHT
+        result_height = None
+        result_angle = None
+        lowest_diff = 1000
+        while curr_h <= ARM_MAX_HEIGHT:
+            curr_a = find_angle_from_height(curr_h)
+            m = math.tan(math.radians(curr_a))
+            b = curr_h
+            x = DISTANCE_TO_SHELF
+            y_target = target_shelf_height
+            y = m*x + b
+            diff = abs(y - y_target)
+            if diff < lowest_diff:
+                lowest_diff = diff
+                result_height = curr_h
+                result_angle = curr_a
+            else:
+                break
+            curr_h += h_step
+        if lowest_diff > 0.1:
+            return None, None
+        return result_height, result_angle
     
     def open_gripper(self) -> int:
         """Method to open the gripper"""
