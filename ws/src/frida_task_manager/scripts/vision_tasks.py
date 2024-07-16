@@ -37,7 +37,7 @@ CHECK_PERSON = "/vision/check_person"
 FIND_TOPIC = "/vision/find_seat"
 POSITION_TOPIC = "/person_pointing"
 SHELF_SERVER = "/shelf_detector"
-DETECTION_TOPIC = "/multi_detections"
+DETECTION_TOPIC = "/detections"
 ROOM_DETECTIONS_TOPIC = "/vision/room_detections"
 IMAGE_TOPIC = "/zed2/zed_node/rgb/image_rect_color"
 MOONDREAM_FROM_CAMERA_AS = "/vision/moondream_from_camera"
@@ -46,11 +46,12 @@ MOONDREAM_FROM_CAMERA_AS = "/vision/moondream_from_camera"
 # MOONDREAM PROMPTS
 ################################################################
 
-SHELF_PROMPT = "Using only one word, categorize the objects in this shelf"
+SHELF_PROMPT = "Using only one word, categorize the objects in this shelve"
 # Another option with more specific categories
-# SHELF_PROMPT = "Using only one word, categorize the objects in this shelf. Answer with 'food', 'tools' or 'toys'"
+SHELF_PROMPT = "Using only one word, categorize the objects in this shelve. Answer with any of the following options: 'beverages','food','kitchen tools','tools','balls' or 'empty'"
 DRINK_PROMPT = "Answering only 'yes' or 'no', is the person in the image holding a drink?"
 DESCRIPTION_PROMPT = "Give me a description of the person in the image. Do not use genders, races, skin tone. Only describe the person's hair, clothes and accesories. Answer in the format: 'The person has hair color, clothes and accesories'"
+
 
 class Person:
     xmin = 0
@@ -288,11 +289,11 @@ class TasksVision:
             return random.choice(["food", "tools", "toys"])
         else:
             goal = MoondreamFromCameraGoal(camera_topic=IMAGE_TOPIC, prompt=SHELF_PROMPT)
-            rospy.loginfo("Moondream sent goal for shelf recognition: ", goal)
+            # rospy.loginfo("Moondream sent goal for shelf recognition: ", goal)
             self.moondream_from_camera_client.send_goal(goal)
             self.moondream_from_camera_client.wait_for_result()
             result = self.moondream_from_camera_client.get_result()
-            rospy.loginfo("Moondream result: ", result)
+            # rospy.loginfo("Moondream result: ", result)
             return result.response
     
     ################################################################

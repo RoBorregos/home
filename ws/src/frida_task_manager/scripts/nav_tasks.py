@@ -106,7 +106,7 @@ class TasksNav:
             elif target == "back location":
                 rospy.loginfo("[INFO] Going back to back location")
                 goal = navServGoal()
-                goal.goal_type = moveActionGoal.BACKWARD
+                goal.goal_type = navServGoal.BACKWARD
                 self.nav_client.send_goal(goal)
                 self.nav_client.wait_for_result()
                 #self.go_place("past location")
@@ -154,10 +154,10 @@ class TasksNav:
         if not self.FAKE_TASKS:
             rospy.loginfo("[INFO] Approaching pose")
             goal = navServGoal()
-            goal.goal_type = moveActionGoal.FORWARD
-            goal.target_pose = target
+            goal.goal_type = navServGoal.FORWARD
+            goal.target_location = target
             self.nav_client.send_goal(goal)
-            self.nav_client.wait_for_result(rospy.Duration.from_sec(20.0))
+            self.nav_client.wait_for_result()
             rospy.loginfo("[SUCCESS] Arrived at pose")
             
             return TasksNav.STATE["EXECUTION_SUCCESS"]
@@ -170,9 +170,9 @@ class TasksNav:
         if not self.FAKE_TASKS:
             rospy.loginfo("[INFO] Deproaching pose")
             goal = navServGoal()
-            goal.goal_type = moveActionGoal.BACKWARD
+            goal.goal_type = navServGoal.BACKWARD
             self.nav_client.send_goal(goal)
-            self.nav_client.wait_for_result(rospy.Duration.from_sec(20.0))
+            self.nav_client.wait_for_result()
             rospy.loginfo("[SUCCESS] Deproached pose")
             
             return TasksNav.STATE["EXECUTION_SUCCESS"]

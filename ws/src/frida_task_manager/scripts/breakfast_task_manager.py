@@ -21,12 +21,12 @@ from nav_tasks import TasksNav
 NAV_ENABLED = True
 MANIPULATION_ENABLED = True
 CONVERSATION_ENABLED = False
-VISION_ENABLED = False
+VISION_ENABLED = True
 
-FAKE_NAV = True
-FAKE_MANIPULATION = True
+FAKE_NAV = False
+FAKE_MANIPULATION = False
 FAKE_HRI = True
-FAKE_VISION = True
+FAKE_VISION = False
 
 AREAS = ["nav", "manipulation", "hri", "vision"]
 
@@ -50,7 +50,7 @@ class TaskManagerServer:
 
     COMMANDS_CATEGORY = {
         "nav" : ["go", "follow", "stop", "approach", "remember", "deproach"],
-        "manipulation" : ["pick", "place", "grasp", "give", "open", "close", "pour"],
+        "manipulation" : ["pick", "place", "grasp", "give", "open", "close", "pour", "move_arm"],
         "hri" : ["ask", "interact", "feedback"],
         "vision" : ["find", "identify", "count"]
     }
@@ -79,6 +79,15 @@ class TaskManagerServer:
         self.perceived_information = ""
 
         self.current_queue = [
+            Command(action="move_arm", complement="NAV_JOINT_POSITION"),
+            Command(action="go", complement="kitchen pre_table"),
+            Command(action="approach", complement="kitchen table"),
+            Command(action="pick", complement="bowl"),
+            Command(action="deproach"),
+            Command(action="go", complement="breakfast pre_table"),
+            Command(action="approach", complement="breakfast table"),
+            Command(action="place", complement="bowl"),
+            Command(action="deproach"),
             Command(action="go", complement="kitchen pre_table"),
             Command(action="approach", complement="kitchen table"),
             Command(action="pick", complement="zucaritas"),
@@ -90,12 +99,12 @@ class TaskManagerServer:
             Command(action="deproach"),
             Command(action="go", complement="kitchen pre_table"),
             Command(action="approach", complement="kitchen table"),
-            Command(action="pick", complement="cocacola"),
+            Command(action="pick", complement="leche"),
             Command(action="deproach"),
             Command(action="go", complement="breakfast pre_table"),
             Command(action="approach", complement="breakfast table"),
-            Command(action="pour", complement="cocacola"),
-            Command(action="place", complement="cocacola")
+            Command(action="pour", complement="leche"),
+            Command(action="place", complement="leche")
         ]
 
         self.run()

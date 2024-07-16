@@ -33,7 +33,7 @@ OBSERVE_JOINT_POSITION = [-1.57, -1.22, -1.13, 0.0, 0.12, 0.78]
 # PICK IS -90, -50, -105, -180, -60, 225
 PICK_JOINT_POSITION = [-1.5707963705062866, -0.6108652353286743, -1.5707963705062866, 3.1415927410125732, -0.6108652353286743, -2.356194496154785]
 RECEIVE_JOINT_POSITION = [-1.5707963705062866, -1.2217304706573486, -1.1344640254974365, 0.0, 0.7853981852531433, -0.78]
-NAV_JOINT_POSITION = [-1.5707963705062866, -1.22173, -0.95993, 3.1415927410125732, -0.6108652353286743, -2.356194496154785]
+NAV_JOINT_POSITION = [-1.511849, -1.016862, -1.598619, 3.141800, -1.023188, -2.376529]
 # Carrying angles -90, -70, -65, 0, 100, -135
 CARRYING_JOINT_POSITION = [-1.3405917882919312, -0.9290976524353027, -1.1157159805297852, 0.04841051623225212, -0.11087805032730103, 0.6598629355430603]
 
@@ -55,7 +55,7 @@ class TasksManipulation:
         "EXECUTION_SUCCESS": 1
     }
 
-    AREA_TASKS = ["pick", "place", "grab", "give", "open", "close"]
+    AREA_TASKS = ["pick", "place", "grab", "give", "open", "close", "move_arm", "place_shelf"]
 
     OBJECTS_DICT = {
         "zucaritas": "cocacola",
@@ -75,11 +75,11 @@ class TasksManipulation:
             self.gripper_service = rospy.ServiceProxy('/gripper_service', Gripper)     
             self.move_pose_client = rospy.ServiceProxy(MOVE_SERVER,MovePose)       
             rospy.loginfo("[INFO] Connecting to manipulation_server")
-            # if not self.manipulation_client.wait_for_server(timeout=rospy.Duration(10.0)):
-            #     rospy.logerr("[SUCCESS] Manipulation server not initialized")
-            # rospy.loginfo("[INFO] Connecting to arm group")
-            # self.arm_group = moveit_commander.MoveGroupCommander("arm", wait_for_servers = 0)
-            # self.toggle_octomap = rospy.ServiceProxy('/toggle_octomap', SetBool)
+            if not self.manipulation_client.wait_for_server(timeout=rospy.Duration(10.0)):
+                rospy.logerr("[SUCCESS] Manipulation server not initialized")
+            rospy.loginfo("[INFO] Connecting to arm group")
+            self.arm_group = moveit_commander.MoveGroupCommander("arm", wait_for_servers = 0)
+            self.toggle_octomap = rospy.ServiceProxy('/toggle_octomap', SetBool)
             
             rospy.loginfo("[INFO] Connecting to arm_server")
             if not self.move_arm_client.wait_for_server(timeout=rospy.Duration(10.0)):
@@ -104,12 +104,16 @@ class TasksManipulation:
             return self.execute_pick( target )
         if command in ("place", "pour"):
             return self.execute_pick_and_place( command )
+        if command in ("place_shelf"):
+            return self.execute_place_shelve(command, target)
         if command in ("give"):
             return self.execute_give()
         if command in ("grab"):
             return self.execute_grab()
         if command in ("observe"):
             return self.execute_observe()
+        if command in ("move_arm"):
+            return self.go_to_joint_position( target )
         return -1
 
     def execute_pick(self, target: str) -> int:
@@ -125,7 +129,7 @@ class TasksManipulation:
         else:
             return TasksManipulation.STATE["EXECUTION_SUCCESS"]
 
-    def execute_pick_and_place(self, target: int) -> int:
+    def execute_pick_and_place(self, target) -> int:
         """Method to call the pick and place action server"""
 
         def manipulation_goal_feedback(feedback_msg):
@@ -137,6 +141,29 @@ class TasksManipulation:
         if not self.FAKE_TASKS:
             self.manipulation_client.send_goal(
                         manipulationPickAndPlaceGoal(object_name = target),
+                        feedback_cb=manipulation_goal_feedback,
+                )
+
+            self.manipulation_client.wait_for_result()
+            result = self.manipulation_client.get_result()
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"] if result.result else TasksManipulation.STATE["EXECUTION_ERROR"]
+        else:
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"]
+        
+    def execute_place_shelve(self, target: str, command : str) -> int:
+
+        def manipulation_goal_feedback(feedback_msg):
+            pass
+
+        rospy.loginfo(f"[INFO] Manipulation Target: {target}")
+
+        
+        min_height, max_height = command.split(" ")
+        min_height, max_height = float(min_height), float(max_height)
+
+        if not self.FAKE_TASKS:
+            self.manipulation_client.send_goal(
+                        manipulationPickAndPlaceGoal(object_name = target, plane_min_height = min_height, plane_max_height = max_height),
                         feedback_cb=manipulation_goal_feedback,
                 )
 
@@ -218,11 +245,11 @@ class TasksManipulation:
     def go_to_joint_position(self, position: str) -> int:
         """Method to move the arm to a predefined joint position"""
         if not self.FAKE_TASKS:
-            joints_target = MANIPULATION_POSITIONS[position]
             self.move_arm_client.send_goal(
-                MoveJointGoal(joints_target = joints_target)
+                MoveJointGoal(predefined_position = position, speed = 0.2)
             )
             self.move_arm_client.wait_for_result()
+            # joints_target = MANIPULATION_POSITIONS[position]
             # self.moveARM(joints_target, 0.2)
             return TasksManipulation.STATE["EXECUTION_SUCCESS"]
         else:
@@ -264,19 +291,31 @@ class TasksManipulation:
         else:
             return TasksManipulation.STATE["EXECUTION_SUCCESS"]
         
-    def move_xyz(self, x = 0, y = 0, z = 0, move_x = False, move_y = False, move_z = False, shelf_size = 0.3) -> int:
+    def move_xyz(self, x = 0, y = 0, z = 0, move_x = False, move_y = False, move_z = False) -> int:
         """Method to move the arm to a predefined joint position"""
         if not self.FAKE_TASKS:
             move_pose_ = moveXYZ()
             move_pose_.x = x
             move_pose_.y = y
-            move_pose_.z = z + (shelf_size / 2)
+            move_pose_.z = z
             move_pose_.move_x = move_x
             move_pose_.move_y = move_y
             move_pose_.move_z = move_z
 
             resp = self.move_pose_client(move_pose_)
             return TasksManipulation.STATE["EXECUTION_SUCCESS"] if resp.success else TasksManipulation.STATE["EXECUTION_ERROR"]
+        else:
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"]
+    
+    def moveNAV(self) -> int:
+        """Method to move the arm to a predefined joint position"""
+        if not self.FAKE_TASKS:
+            joints_target = MANIPULATION_POSITIONS["NAV_JOINT_POSITION"]
+            self.move_arm_client.send_goal(
+                MoveJointGoal(joints_target = joints_target)
+            )
+            self.move_arm_client.wait_for_result()
+            return TasksManipulation.STATE["EXECUTION_SUCCESS"]
         else:
             return TasksManipulation.STATE["EXECUTION_SUCCESS"]
 

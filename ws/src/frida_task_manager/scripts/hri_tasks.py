@@ -16,7 +16,7 @@ from frida_hri_interfaces.srv import ItemsCategory
 from frida_hri_interfaces.msg import GuestAnalysisAction, GuestAnalysisFeedback, GuestAnalysisGoal, GuestAnalysisResult
 from frida_hri_interfaces.srv import GuestInfo, GuestInfoResponse
 
-SPEAK_TOPIC = "/speech/speak"
+SPEAK_TOPIC = "/speech/speak_now"
 CONVERSATION_SERVER = "/conversation_as"
 GUEST_INFO_SERVICE = "/guest_info"
 GUEST_ANALYSIS_SERVER = "/guest_analysis_as"
@@ -45,8 +45,8 @@ class TasksHRI:
             self.pub_speak = rospy.Publisher(SPEAK_TOPIC, String, queue_size=10)
             
             rospy.loginfo("[INFO] Waiting for conversation server")
-            rospy.wait_for_service(SPEAK_TOPIC, timeout=10.0)
-            self.speak_client = rospy.ServiceProxy(SPEAK_TOPIC, Speak)
+            # rospy.wait_for_service(SPEAK_TOPIC, timeout=10.0)
+            #self.speak_client = rospy.ServiceProxy(SPEAK_TOPIC, Speak)
             rospy.loginfo("[SUCCESS] Conversation server initialized")
             
             rospy.loginfo("[INFO] Waiting for items category server")
@@ -61,7 +61,7 @@ class TasksHRI:
                 rospy.wait_for_service(OBJECT_CATEGORY_SERVER, timeout=2.0)
                 self.object_category_client = rospy.ServiceProxy(OBJECT_CATEGORY_SERVER, ItemsCategory)
             except rospy.ROSException as e:
-                rospy.logwarn("[WARNING] Items category service not available")
+                rospy.logwarn("[WARNING] Object category service not available")
 
         else:
             rospy.loginfo("[INFO] Fake HRI Task Manager initialized")
@@ -151,9 +151,9 @@ class TasksHRI:
 
     def speak(self, text: str, now: bool = False) -> None:
         """Method to publish directly text to the speech node"""
-        #self.pub_speak.publish(text)
         if not self.FAKE_TASK:
-            self.speak_client(text)
+            self.pub_speak.publish(text)
+            #self.speak_client(text)
         else:
             rospy.loginfo(f"[INFO] Speaking: {text}")
     
@@ -169,7 +169,7 @@ class TasksHRI:
         """Method to get the category of a single object"""
         if self.FAKE_TASK:
             return "sample_category_" + str(self.fake_index + 1)
-        response = self.object_category_client(items=[object_name])
+        response = self.items_category_client(items=[object_name])
         return response.category
 
 if __name__ == "__main__":
