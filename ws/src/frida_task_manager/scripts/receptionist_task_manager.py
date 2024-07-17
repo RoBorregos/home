@@ -121,11 +121,16 @@ class ReceptionistTaskManager:
 
         self.current_guest = 1
 
+        self.hostname = "Adan"
+        self.host_drink = "water"
+
         self.guests = [
-            Guest(0, "Adan", "water", "Has dark brown hair, and is wearing a blue t-shirt and shorts."),
+            Guest(0, self.hostname, self.host_drink, ""),
             Guest(1),
             Guest(2),
         ]
+
+        self.host_identified = False
 
         self.run()
 
@@ -200,7 +205,7 @@ class ReceptionistTaskManager:
             elif self.current_state == STATES["REQUEST_GUEST_INFORMATION"]:
                 rospy.loginfo("Request guest information")
                 #self.subtask_manager["hri"].speak("Could you tell me your name and your favorite drink?", now=False)
-                name, drink = self.subtask_manager["hri"].get_guest_info( self.current_guest )
+                name, drink = self.subtask_manager["vision"].get_guest_info( self.current_guest )
                 if name != "error":
                     self.guests[self.current_guest].set_info(name, drink)
                     self.subtask_manager["hri"].speak(f"Nice to meet you {name}, please stay in front of me while I recognize your face.", now=False)
@@ -212,7 +217,7 @@ class ReceptionistTaskManager:
             elif self.current_state == STATES["SAVE_USER_FACE"]:
                 rospy.loginfo("Save user face")
                 if self.follow_face():
-                    self.subtask_manager["hri"].analyze_guest( self.current_guest )
+                    self.subtask_manager["vision"].analyze_guest( self.current_guest )
                     self.subtask_manager["vision"].save_face_name( self.guests[self.current_guest].name )
                     self.subtask_manager["hri"].speak("I have saved your face, thank you. Please follow me to the living room.", now=False)
                     self.current_state = STATES["GO_TO_LIVING_ROOM"]
@@ -236,9 +241,29 @@ class ReceptionistTaskManager:
             ### Introduce guest 1
             elif self.current_state == STATES["INTRODUCE_GUEST_1"]:
                 rospy.loginfo("Introduce guest 1 to host")
-                description = self.subtask_manager["hri"].get_guest_description( 1 )
+                description = self.subtask_manager["vision"].get_guest_description( 1 )
                 self.guests[1].set_description( description )
-                self.followed_person = self.guests[0].name
+
+                if not self.host_identified:
+                    self.followed_person = "Unknown" #self.guests[0].name
+
+                    self.subtask_manager["manipulation"].move_arm_joints(0, 0, "face_detection")
+                    rospy.loginfo("Save host face")
+                    while True and not self.host_identified:
+                        if not self.follow_face():
+                            time.sleep(1)
+                            timeout_face += 1
+                            rospy.loginfo("Expecting unkown face")
+                            continue
+
+                        self.subtask_manager["vision"].analyze_guest(0)
+                        self.subtask_manager["vision"].save_face_name( self.guests[0].name )
+                        description = self.subtask_manager["vision"].get_guest_description(0)
+                        self.guests[0].set_description( description )
+
+                        self.subtask_manager["hri"].speak(f"I have saved {self.guests[0].name}.", now=False)
+                        self.host_identified = True
+
                 self.subtask_manager["manipulation"].move_arm_joints(0, 0, "seat")
                 timeout_face = 0
                 while not self.follow_face() and timeout_face < 10: # Keep following the face until it's recognize IMPROVE
@@ -253,7 +278,7 @@ class ReceptionistTaskManager:
             # Introduce guest 2
             elif self.current_state == STATES["INTRODUCE_GUEST_2"]:
                 rospy.loginfo("Introduce guest 2 to host and guest 1")
-                description = self.subtask_manager["hri"].get_guest_description( 2 )
+                description = self.subtask_manager["vision"].get_guest_description( 2 )
                 self.guests[2].set_description( description )
                 
                 introduced_to = 0
