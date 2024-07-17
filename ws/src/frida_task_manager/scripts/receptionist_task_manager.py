@@ -141,6 +141,9 @@ class ReceptionistTaskManager:
     def follow_face(self) -> bool:
         """Calls the arm joints server to follow a face
         Returns: Movement of the arm executed"""
+        if FAKE_VISION:
+            return True
+        
         if self.following_face and not self.arm_moving and self.detected_faces:
             rospy.loginfo(f"Following {self.followed_person}")
             self.arm_moving = True
@@ -205,7 +208,7 @@ class ReceptionistTaskManager:
             elif self.current_state == STATES["REQUEST_GUEST_INFORMATION"]:
                 rospy.loginfo("Request guest information")
                 #self.subtask_manager["hri"].speak("Could you tell me your name and your favorite drink?", now=False)
-                name, drink = self.subtask_manager["vision"].get_guest_info( self.current_guest )
+                name, drink = self.subtask_manager["hri"].get_guest_info( self.current_guest )
                 if name != "error":
                     self.guests[self.current_guest].set_info(name, drink)
                     self.subtask_manager["hri"].speak(f"Nice to meet you {name}, please stay in front of me while I recognize your face.", now=False)
