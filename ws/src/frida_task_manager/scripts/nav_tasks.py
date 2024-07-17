@@ -35,7 +35,7 @@ class TasksNav:
         "EXECUTION_SUCCESS": 1
     }
 
-    AREA_TASKS = ["go", "follow", "stop", "approach", "remember"]
+    AREA_TASKS = ["go", "follow", "stop", "approach", "remember", "deproach", "door_signal"]
 
     def __init__(self, fake = False) -> None:
         self.FAKE_TASKS = fake
@@ -83,6 +83,8 @@ class TasksNav:
             return self.approach_pose(target)
         if command == "deproach":
             return self.deproach()
+        if command == "door_signal":
+            return self.door_signal()
 
         return TasksNav.STATE["EXECUTION_ERROR"]
 
@@ -178,6 +180,21 @@ class TasksNav:
             return TasksNav.STATE["EXECUTION_SUCCESS"]
         else:
             rospy.loginfo("[INFO] Deproached pose")
+            return TasksNav.STATE["EXECUTION_SUCCESS"]
+        
+    def door_signal(self) -> int:
+        """Action to signal the door"""
+        if not self.FAKE_TASKS:
+            rospy.loginfo("[INFO] Signaling door")
+            goal = navServGoal()
+            goal.goal_type = navServGoal.DOOR_SIGNAL
+            self.nav_client.send_goal(goal)
+            self.nav_client.wait_for_result()
+            rospy.loginfo("[SUCCESS] Signaled door")
+            
+            return TasksNav.STATE["EXECUTION_SUCCESS"]
+        else:
+            rospy.loginfo("[INFO] Signaled door")
             return TasksNav.STATE["EXECUTION_SUCCESS"]
 
     def store_current_location(self) -> int:

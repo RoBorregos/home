@@ -9,7 +9,7 @@ import rospy
 import actionlib
 
 ### ROS messages
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
 from frida_hri_interfaces.msg import ConversateAction, ConversateFeedback, ConversateGoal, ConversateResult
 from frida_hri_interfaces.srv import Speak
 from frida_hri_interfaces.srv import ItemsCategory
@@ -22,6 +22,7 @@ GUEST_INFO_SERVICE = "/guest_info"
 GUEST_ANALYSIS_SERVER = "/guest_analysis_as"
 ITEMS_CATEGORY_SERVER = "/items_category"
 OBJECT_CATEGORY_SERVER = "/object_category"
+KEYWORD_TOPIC = "keyword_detected"
 
 class TasksHRI:
     STATE_ENUM = {
@@ -67,6 +68,8 @@ class TasksHRI:
             rospy.loginfo("[INFO] Fake HRI Task Manager initialized")
         
         rospy.loginfo("[SUCCESS] HRI Task Manager initialized")
+        self.keyword_sub = rospy.Subscriber("keyword_detected", Bool, self.callbackKeyword)
+        self.keyword_detected = False
 
     def execute_command(self, command: str, complement: str, perceived_information: str) -> int:
         """Method to execute each command"""
@@ -171,6 +174,10 @@ class TasksHRI:
             return "sample_category_" + str(self.fake_index + 1)
         response = self.items_category_client(items=[object_name])
         return response.category
+    
+    def callbackKeyword(self, data):
+        self.keyword_detected = True
+
 
 if __name__ == "__main__":
     try:
