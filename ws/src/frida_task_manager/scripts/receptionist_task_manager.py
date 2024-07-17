@@ -33,10 +33,10 @@ CONVERSATION_ENABLED = True
 VISION_ENABLED = True
 
 
-FAKE_NAV = True
-FAKE_MANIPULATION = True
-FAKE_HRI = True
-FAKE_VISION = True
+FAKE_NAV = False
+FAKE_MANIPULATION = False
+FAKE_HRI = False
+FAKE_VISION = False
 
 
 AREAS = ["nav", "manipulation", "hri", "vision"]
