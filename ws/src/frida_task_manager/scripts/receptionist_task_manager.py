@@ -230,12 +230,12 @@ class ReceptionistTaskManager:
             ### Navigate to the living room
             elif self.current_state == STATES["GO_TO_LIVING_ROOM"]:
                 rospy.loginfo("Go to living room")
-                #self.subtask_manager["nav"].execute_command("remember", "past location", "")
+                self.subtask_manager["nav"].execute_command("remember", "past location", "")
                 self.subtask_manager["hri"].speak("The host is already waiting for you there. Please stay behind me until I find your seat.", now=False)
                 self.subtask_manager["manipulation"].move_arm_joints(0, 0, "face_detection")
                 #TODO: Face to front default arm position with arm server
 
-                #self.subtask_manager["nav"].execute_command("go", "living_room", "")
+                self.subtask_manager["nav"].execute_command("go", "living_room", "")
                 if self.current_guest == 1:
                     self.current_state = STATES["INTRODUCE_GUEST_1"]
                 else:
@@ -353,7 +353,7 @@ class ReceptionistTaskManager:
             ### Go back to the entrance
             elif self.current_state == STATES["GO_TO_ENTRANCE"]:
                 rospy.loginfo("Go to entrance")
-                #self.subtask_manager["nav"].execute_command("go", "entrance", "")
+                self.subtask_manager["nav"].execute_command("go", "entrance", "")
                 self.subtask_manager["manipulation"].move_arm_joints(0, 0, "face_detection")
                 self.current_state = STATES["WAITING_GUEST"]
 
