@@ -15,6 +15,7 @@ from frida_hri_interfaces.srv import Speak
 from frida_hri_interfaces.srv import ItemsCategory
 from frida_hri_interfaces.msg import GuestAnalysisAction, GuestAnalysisFeedback, GuestAnalysisGoal, GuestAnalysisResult
 from frida_hri_interfaces.srv import GuestInfo, GuestInfoResponse
+import random
 
 SPEAK_TOPIC = "/speech/speak_now"
 CONVERSATION_SERVER = "/conversation_as"
@@ -34,7 +35,8 @@ class TasksHRI:
         "SHUTDOWN": 5
     }
 
-    AREA_TASKS = ["ask", "interact", "feedback", "analyze_objects"]
+    AREA_TASKS = ["ask", "interact", "feedback", "analyze_objects", "speak"]
+    OBJECT_CATEGORIES = ["decorations", "cleaning_supplies", "toys", "fruits", "drinks", "snaks", "dishes", "food"]
 
     def __init__(self, fake = False) -> None:
         self.FAKE_TASK = fake
@@ -76,18 +78,18 @@ class TasksHRI:
         rospy.loginfo("[INFO] HRI Command")
         composed_request = f"{command}: {complement}, perceived info: {perceived_information}"
 
-        # if command == "analyze_guest":
-        #     return self.analyze_guest(int(complement))
-        # elif command == "get_guest_info":
-        #     return self.get_guest_info(int(complement))
-        # elif command == "get_guest_description":
-        #     return self.get_guest_description(int(complement))
-        # elif command == "speak":
-        #     return self.speak(complement)
-        # elif command == "cancel":
-        #     return self.cancel_command()
-        # elif command == "analyze_objects":
-        #     return self.get_objects_category(perceived_information.split(","))
+        if command == "analyze_guest":
+            return self.analyze_guest(int(complement))
+        elif command == "get_guest_info":
+            return self.get_guest_info(int(complement))
+        elif command == "get_guest_description":
+            return self.get_guest_description(int(complement))
+        elif command == "speak":
+            return self.speak(complement)
+        elif command == "cancel":
+            return self.cancel_command()
+        elif command == "analyze_objects":
+            return self.get_objects_category(perceived_information.split(","))
         
 
         goal = ConversateGoal()
@@ -154,11 +156,12 @@ class TasksHRI:
 
     def speak(self, text: str, now: bool = False) -> None:
         """Method to publish directly text to the speech node"""
+        rospy.loginfo(f"[INFO] Speaking: {text}")
+        
         if not self.FAKE_TASK:
             self.pub_speak.publish(text)
             #self.speak_client(text)
-        else:
-            rospy.loginfo(f"[INFO] Speaking: {text}")
+        
     
     def get_items_category(self, object_names) -> str:
         """Method to get the category of a list of object names"""
@@ -171,7 +174,7 @@ class TasksHRI:
     def get_object_category(self, object_name) -> str:
         """Method to get the category of a single object"""
         if self.FAKE_TASK:
-            return "sample_category_" + str(self.fake_index + 1)
+            return random.choice(self.OBJECT_CATEGORIES)
         response = self.items_category_client(items=[object_name])
         return response.category
     

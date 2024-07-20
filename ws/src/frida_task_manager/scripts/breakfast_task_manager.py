@@ -20,7 +20,7 @@ from nav_tasks import TasksNav
 
 NAV_ENABLED = True
 MANIPULATION_ENABLED = True
-CONVERSATION_ENABLED = False
+CONVERSATION_ENABLED = True
 VISION_ENABLED = True
 
 FAKE_NAV = False
@@ -49,9 +49,9 @@ class TaskManagerServer:
     }
 
     COMMANDS_CATEGORY = {
-        "nav" : ["go", "follow", "stop", "approach", "remember", "deproach"],
+        "nav" : ["go", "follow", "stop", "approach", "remember", "deproach", "door_signal", "move"],
         "manipulation" : ["pick", "place", "grasp", "give", "open", "close", "pour", "move_arm"],
-        "hri" : ["ask", "interact", "feedback"],
+        "hri" : ["ask", "interact", "feedback", "speak"],
         "vision" : ["find", "identify", "count"]
     }
 
@@ -64,7 +64,7 @@ class TaskManagerServer:
 
         if CONVERSATION_ENABLED:
             self.subtask_manager["hri"] = TasksHRI(fake=FAKE_HRI)
-            self.subtask_manager["hri"].speak("Hi, my name is Frida. I'm here to help you with your domestic tasks")
+            # self.subtask_manager["hri"].speak("Hi, my name is Frida. I'm here to help you with your domestic tasks")
         if MANIPULATION_ENABLED:
             self.subtask_manager["manipulation"] = TasksManipulation(fake=FAKE_MANIPULATION)
         if NAV_ENABLED:
@@ -79,32 +79,37 @@ class TaskManagerServer:
         self.perceived_information = ""
 
         self.current_queue = [
+            Command(action="door_signal"),
+            Command(action="move"),
             Command(action="move_arm", complement="NAV_JOINT_POSITION"),
-            Command(action="go", complement="kitchen pre_table"),
-            Command(action="approach", complement="kitchen table"),
+            Command(action="go", complement="kitchen pre_dishwasher"),
+            Command(action="approach", complement="kitchen dishwasher"),
+            Command(action="speak", complement="I'm going to pick the bowl now"),
             Command(action="pick", complement="bowl"),
             Command(action="deproach"),
-            Command(action="go", complement="breakfast pre_table"),
-            Command(action="approach", complement="breakfast table"),
+            Command(action="go", complement="kitchen pre_dinner_table"),
+            Command(action="approach", complement="kitchen dinner_table"),
             Command(action="place", complement="bowl"),
             Command(action="deproach"),
-            Command(action="go", complement="kitchen pre_table"),
-            Command(action="approach", complement="kitchen table"),
-            Command(action="pick", complement="zucaritas"),
+            Command(action="go", complement="kitchen pre_counter"),
+            Command(action="approach", complement="kitchen counter"),
+            Command(action="speak", complement="I'm going to pick the cereal now"),
+            Command(action="pick", complement="cereal_box"),
             Command(action="deproach"),
-            Command(action="go", complement="breakfast pre_table"),
-            Command(action="approach", complement="breakfast table"),
-            Command(action="pour", complement="zucaritas"),
-            Command(action="place", complement="zucaritas"),
+            Command(action="go", complement="kitchen pre_dinner_table"),
+            Command(action="approach", complement="kitchen dinner_table"),
+            # Command(action="pour", complement="cereal_box"),
+            Command(action="place", complement="cereal_box"),
             Command(action="deproach"),
-            Command(action="go", complement="kitchen pre_table"),
-            Command(action="approach", complement="kitchen table"),
-            Command(action="pick", complement="leche"),
+            Command(action="go", complement="kitchen pre_counter"),
+            Command(action="approach", complement="kitchen counter"),
+            Command(action="speak", complement="I'm going to pick the milk now"),
+            Command(action="pick", complement="milk"),
             Command(action="deproach"),
-            Command(action="go", complement="breakfast pre_table"),
-            Command(action="approach", complement="breakfast table"),
-            Command(action="pour", complement="leche"),
-            Command(action="place", complement="leche")
+            Command(action="go", complement="kitchen pre_dinner_table"),
+            Command(action="approach", complement="kitchen dinner_table"),
+            # Command(action="pour", complement="leche"),
+            Command(action="place", complement="milk")
         ]
 
         self.run()

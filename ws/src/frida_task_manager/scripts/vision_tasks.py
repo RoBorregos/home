@@ -45,10 +45,10 @@ MOONDREAM_FROM_CAMERA_AS = "/vision/moondream_from_camera"
 ################################################################
 # MOONDREAM PROMPTS
 ################################################################
-
-SHELF_PROMPT = "Using only one word, categorize the objects in this shelve"
+OBJECT_CATEGORIES = ["decorations", "cleaning_supplies", "toys", "fruits", "drinks", "snaks", "dishes", "food"]
+# SHELF_PROMPT = "Using only one word, categorize the objects in this shelve"
 # Another option with more specific categories
-SHELF_PROMPT = "Using only one word, categorize the objects in this shelve. Answer with any of the following options: 'beverages','food','kitchen tools','tools','balls' or 'empty'"
+SHELF_PROMPT = "Using only one word, categorize the objects in this image. Answer with any of the options in the following list: {}".format(OBJECT_CATEGORIES)
 DRINK_PROMPT = "Answering only 'yes' or 'no', is the person in the image holding a drink?"
 DESCRIPTION_PROMPT = "Give me a description of the person in the image. Do not use genders, races, skin tone. Only describe the person's hair, clothes and accesories. Answer in the format: 'The person has hair color, clothes and accesories'"
 
@@ -220,7 +220,10 @@ class TasksVision:
                 detections = rospy.wait_for_message(DETECTION_TOPIC, objectDetectionArray, timeout=10.0)
                 closest_distance = 10000
                 closest_index = 0
+                
                 for i, detection in enumerate(detections.detections):
+                    if str(detection.labelText).lower() in ["sports ball", "bottle", "wine glass", "cup", "bowl", "apple", "banana", "book", "vase", "bread", "canned", "candle", "toiletry", "tomato", "green vegetables", "toilet paper", "cookies"]:
+                        continue
                     # return closest object
                     #point3d is pointstamped
                     point3D = detection.point3D.point
@@ -286,7 +289,7 @@ class TasksVision:
     def get_shelve_moondream(self) -> str:
         """Method to get the shelve category using Moondream"""
         if self.FAKE_TASKS:
-            return random.choice(["food", "tools", "toys"])
+            return random.choice(OBJECT_CATEGORIES)
         else:
             goal = MoondreamFromCameraGoal(camera_topic=IMAGE_TOPIC, prompt=SHELF_PROMPT)
             # rospy.loginfo("Moondream sent goal for shelf recognition: ", goal)

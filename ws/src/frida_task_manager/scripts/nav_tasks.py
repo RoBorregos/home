@@ -12,12 +12,13 @@ import actionlib
 from std_msgs.msg import String
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from tf2_geometry_msgs import PoseStamped, PointStamped
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Pose, Twist
 from frida_navigation_interfaces.msg import navServAction, navServFeedback, navServGoal, navServResult
 from frida_navigation_interfaces.srv import CreateGoal, CreateGoalRequest, CreateGoalResponse
 from frida_navigation_interfaces.msg import moveActionAction, moveActionGoal, moveActionResult, moveActionFeedback
 from std_srvs.srv import SetBool
 import math
+import time
 
 import tf2_ros
 import tf.transformations as transformations
@@ -35,7 +36,7 @@ class TasksNav:
         "EXECUTION_SUCCESS": 1
     }
 
-    AREA_TASKS = ["go", "follow", "stop", "approach", "remember", "deproach", "door_signal"]
+    AREA_TASKS = ["go", "follow", "stop", "approach", "remember", "deproach", "door_signal", "move"]
 
     def __init__(self, fake = False) -> None:
         self.FAKE_TASKS = fake
@@ -48,6 +49,9 @@ class TasksNav:
             # self.map_pose_transformer = rospy.ServiceProxy("/create_goal", CreateGoal)
             self.follow_person_toggle = rospy.ServiceProxy("/change_follow_person_state", SetBool)
             self.test_pose_pub = rospy.Publisher("/nav_test_pose_task_manager", PoseStamped, queue_size=1)
+            self.cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
+            self.r = rospy.Rate(50)
+
             
             rospy.loginfo("[INFO] Waiting for nav server")
             if not self.nav_client.wait_for_server(timeout=rospy.Duration(5.0)):
@@ -85,6 +89,8 @@ class TasksNav:
             return self.deproach()
         if command == "door_signal":
             return self.door_signal()
+        if command == "move":
+            return self.move()
 
         return TasksNav.STATE["EXECUTION_ERROR"]
 
@@ -224,6 +230,27 @@ class TasksNav:
         else:
             rospy.loginfo("[SUCCESS] Starting Following person")
             return TasksNav.STATE["EXECUTION_SUCCESS"]
+
+    def move(self):
+        cmd_vel = Twist()
+        cmd_vel.linear.x = 0.5
+
+        pre_time = time.time()
+        rospy.loginfo(str(time.time() - pre_time))
+        while time.time() - pre_time < 5:
+            if rospy.is_shutdown():
+                rospy.loginfo('Error')
+                return TasksNav.STATE["EXECUTION_ERROR"]
+            rospy.loginfo(f"{cmd_vel}")
+            self.cmd_vel_pub.publish(cmd_vel)
+            self.r.sleep()
+
+        cmd_vel.linear.x = 0.0
+        rospy.loginfo(f"{cmd_vel}")
+        self.cmd_vel_pub.publish(cmd_vel)
+
+        return TasksNav.STATE["EXECUTION_SUCCESS"]
+
     
     def stop_follow_person(self) -> int:
         """Method to stop following a person"""

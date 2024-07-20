@@ -81,7 +81,7 @@ class TaskManagerServer:
     }
 
     COMMANDS_CATEGORY = {
-        "nav" : ["go", "follow", "stop", "approach", "remember", "go_pose", "stop_follow", "deproach"],
+        "nav" : ["go", "follow", "stop", "approach", "remember", "go_pose", "stop_follow", "deproach", "door_signal"],
         "manipulation" : ["pick", "place", "grasp", "give", "open", "close", "pour", "observe", "place_shelf", "move_arm"],
         "hri" : ["ask", "interact", "feedback", "analyze_objects"],
         "vision" : ["find", "identify", "count", "get_bag", "get_shelves"]
@@ -107,8 +107,8 @@ class TaskManagerServer:
             self.subtask_manager["hri"] = TasksHRI(fake=FAKE_HRI)
             self.subtask_manager["hri"].speak("Hi, my name is Frida. I'm here to help you with your domestic tasks")   
         
-        # self.current_state = TaskManagerServer.TASK_STATES["PRE_TABLE_POSITION"]
-        self.current_state = TaskManagerServer.TASK_STATES["ANALYZE_SHELVE"]
+        self.current_state = TaskManagerServer.TASK_STATES["PRE_TABLE_POSITION"]
+        # self.current_state = TaskManagerServer.TASK_STATES["ANALYZE_SHELVE"]
         self.current_command = None
         self.perceived_information = ""
 
@@ -170,7 +170,7 @@ class TaskManagerServer:
         """Main loop for the task manager"""
         self.shelf_list = None
         self.shelf_category = {}
-        self.shelf_heights = [0.0, 0.6, 0.95, 1.30]
+        self.shelf_heights = [0.0, 1.1, 1.40, 1.70]
 
         self.picked_object = "milk"
 
@@ -279,6 +279,7 @@ class TaskManagerServer:
                         category = self.subtask_manager["vision"].get_shelve_moondream()
                         if category.lower() != "empty":
                             # self.shelf_list.append({"objects": category, "height": height})
+                            self.subtask_manager["hri"].speak(f"I found a {category} shelve")
                             self.shelf_category[category] = height
                         rospy.loginfo(f"[INFO] Category: {category}")
 
@@ -294,14 +295,8 @@ class TaskManagerServer:
                 self.current_state = TaskManagerServer.TASK_STATES["APPROACH_SHELVE"] if self.vision_mode == "fast_execution" else TaskManagerServer.TASK_STATES["GET_SHELVE_CATEGORIES"]
             elif self.current_state == TaskManagerServer.TASK_STATES["APPROACH_SHELVE"]:
                 rospy.loginfo("[INFO] Approaching shelve...")
-                goal = navServGoal()
-                goal.goal_type = navServGoal.FORWARD
-                goal.target_location = "kitchen shelve"
-                goal.target_approach = TARGET_SHELVE_APPROACH
-                # self.nav_client.send_goal(goal)
-                # self.nav_client.wait_for_result()
-                # self.subtask_manager["nav"].nav_client.send_goal(goal)
-                # self.subtask_manager["nav"].nav_client.wait_for_result()
+                result = self.execute_command(Command(action="approach", complement="kitchen shelve"))
+
                 self.current_state = TaskManagerServer.TASK_STATES["GET_SHELVE_CATEGORIES"] if self.vision_mode != "robust" else TaskManagerServer.TASK_STATES["ANALYZE_SHELVE"]
                 self.vision_mode = "" if self.vision_mode == "robust" else self.vision_mode
             elif self.current_state == TaskManagerServer.TASK_STATES["GET_SHELVE_CATEGORIES"]:
@@ -319,6 +314,7 @@ class TaskManagerServer:
                 self.current_state = TaskManagerServer.TASK_STATES["PLACE"]
             elif self.current_state == TaskManagerServer.TASK_STATES["PLACE"]:
                 rospy.loginfo("[INFO] Placing object in the shelve of category {}...".format(self.picked_object_category))
+                self.subtask_manager["hri"].speak(f"The {self.picked_object} needs to be placed in the {self.picked_object_category} category")
                 if self.picked_object_category in self.shelf_category:
                     # Get angel vision from the height and the target_approach distance
                     target_height, target_angle = self.get_height_angle_for_shelve(self.shelf_category[self.picked_object_category] + SHELF_SIZE/2)
@@ -335,7 +331,11 @@ class TaskManagerServer:
                     
                     result = self.subtask_manager["manipulation"].move_arm_joints(0, -int(target_angle))
                     rospy.sleep(1)
-                    heights = "{} {}".format(self.shelf_category[self.picked_object_category] - 0.05, self.shelf_category[self.picked_object_category] + 0.05)
+                    if target_height > ARM_MAX_HEIGHT or target_height < ARM_MIN_HEIGHT:
+                        self.subtask_manager["hri"].speak("I can't reach the shelve, I'm placing the object at the best reachable height")
+                        heights = "{} {}".format(self.shelf_heights[1] - 0.05, self.shelf_heights[1] + 0.05)
+                    else:
+                        heights = "{} {}".format(self.shelf_category[self.picked_object_category] - 0.05, self.shelf_category[self.picked_object_category] + 0.05)
                     result = self.execute_command(Command(action="place_shelf", complement=heights))
                     if result == TaskManagerServer.STATE_ENUM["ERROR"]:
                         rospy.logerr("[ERROR] Error in task execution")
@@ -352,6 +352,7 @@ class TaskManagerServer:
                     if len(heights) > 0:
                         target_height, target_angle = self.get_height_angle_for_shelve(heights[0] + SHELF_SIZE/2)
                         rospy.loginfo(f"[INFO] Placing object in empty shelve at {heights[0]} heights")
+                        self.subtask_manager["hri"].speak("Object goes in empty shelf")
                         result = self.subtask_manager["manipulation"].move_xyz(z = target_height, move_z = True)
                         if result == TaskManagerServer.STATE_ENUM["ERROR"]:
                             rospy.logerr("[ERROR] Error in task execution")
@@ -361,7 +362,13 @@ class TaskManagerServer:
                         if result == TaskManagerServer.STATE_ENUM["ERROR"]:
                             rospy.logerr("[ERROR] Error in task execution")
                             break
-                        heights = "{} {}".format(heights[0] - 0.1, heights[0] + 0.1)
+
+                        if heights[0] > ARM_MAX_HEIGHT or heights[0] < ARM_MIN_HEIGHT:
+                            self.subtask_manager["hri"].speak("I can't reach the shelve, I'm placing the object at the best reachable height")
+                            heights = "{} {}".format(self.shelf_heights[1] - 0.05, self.shelf_heights[1] + 0.05)
+                        else:
+                            heights = "{} {}".format(heights[0] - 0.1, heights[0] + 0.1)
+                        
                         result = self.execute_command(Command(action="place_shelf", complement=heights))
                     else:
                         rospy.logerr("[ERROR] No available space in the shelve")

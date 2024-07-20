@@ -88,8 +88,8 @@ class TasksManipulation:
             if not self.gripper_service.wait_for_service(timeout=rospy.Duration(10.0)):
                 rospy.logerr("[SUCCESS] Gripper service not initialized")
             rospy.loginfo("[INFO] Connecting to move_pose_client")
-            if not self.move_pose_client.wait_for_service(timeout=rospy.Duration(10.0)):
-                rospy.logerr("[SUCCESS] Move pose client not initialized")
+            # if not self.move_pose_client.wait_for_service(timeout=rospy.Duration(10.0)):
+            #     rospy.logerr("[SUCCESS] Move pose client not initialized")
             # rospy.loginfo("[INFO] Connecting to arm group")
                 
             self.OBSERVER = [-1.5700864791870117, -1.1652400493621826, -1.4244275093078613, -6.2831220626831055, 0.3724396228790283, -5.487866401672363, 0.0] ## TO RADIANDS USING PI
