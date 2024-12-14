@@ -1,0 +1,33 @@
+services:
+  zed_ros:
+    image: 4.2-ros-gl-devel-cuda11.4-ubuntu20.04
+    container_name: zed
+    privileged: true
+    runtime: nvidia
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      # - ROS_MASTER_URI=http://192.168.31.105:11311
+      # - ROS_MASTER_URI=http://192.168.31.2:11311
+      # - ROS_IP=192.168.31.2
+      # - ROS_IP=192.168.31.7
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ${HOME}/.Xauthority:/root/.Xauthority
+      # - ./src/zed-ros-wrapper:/ws/src/zed-ros-wrapper
+      - ./:/ws
+      - /dev:/dev
+    network_mode: host
+    stdin_open: true
+    tty: true
+    # command: bash
+    command: bash -c "source /opt/ros/noetic/setup.bash && source devel/setup.bash && roslaunch zed_wrapper zed2_robot.launch"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
